@@ -6,9 +6,6 @@
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
-  "engines": {
-    "node": "18.x"
-  },
   "scripts": {
     "start": "node server/index.ts",
     "dev": "ts-node server/index.ts",
