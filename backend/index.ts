@@ -1,18 +1,11 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import cors from "cors";
 import express, { Request, Response } from "express";
+import { prisma } from "./prisma/client";
 
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL,
-    },
-  },
-});
 const app = express();
 
 // Configuração do CORS mais específica
