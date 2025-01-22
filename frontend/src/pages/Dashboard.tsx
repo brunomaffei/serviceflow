@@ -6,8 +6,7 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
 import { apiClient } from "../api/client";
 import { DeleteConfirmationModal } from "../components/DeleteConfirmationModal";
 import { Header } from "../components/Header";
@@ -19,11 +18,7 @@ export function Dashboard() {
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<ServiceOrder | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
-  const navigate = useNavigate();
 
   const loadOrders = useCallback(async () => {
     try {
@@ -39,10 +34,7 @@ export function Dashboard() {
       setOrders(Array.isArray(ordersData) ? ordersData : []);
     } catch (error) {
       console.error("Error loading orders:", error);
-      setError("Erro ao carregar ordens de serviço");
       setOrders([]); // Inicializar como array vazio em caso de erro
-    } finally {
-      setLoading(false);
     }
   }, []);
 
@@ -58,11 +50,9 @@ export function Dashboard() {
   const handleDeleteOrder = async (orderId: string) => {
     try {
       await apiClient.deleteServiceOrder(orderId);
-      setMessage("Ordem de serviço deletada com sucesso");
       loadOrders();
     } catch (error) {
       console.error("Error deleting order:", error);
-      setMessage("Erro ao deletar ordem de serviço");
     } finally {
       setOrderToDelete(null); // Fechar o modal após a conclusão
     }

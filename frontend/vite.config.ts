@@ -100,4 +100,17 @@ export default defineConfig({
   server: {
     port: 5173,
   },
+  build: {
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom", "react-router-dom"],
+        },
+      },
+    },
+  },
+  esbuild: {
+    logOverride: { "this-is-undefined-in-esm": "silent" },
+  },
 });

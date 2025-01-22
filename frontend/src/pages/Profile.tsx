@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { DefaultLogo } from "../components/DefaultLogo";
 import { Header } from "../components/Header";
-import type { User } from "../types/ServiceOrder";
+import { User } from "../types/User";
 
 export function Profile() {
   const [user, setUser] = useState<User | null>(null);
@@ -281,7 +281,7 @@ export function Profile() {
                         ? editableCompanyInfo?.phone || ""
                         : companyInfo?.phone || ""
                     }
-                    onChange={(e) =>
+                    onChange={(e: any) =>
                       editMode &&
                       setEditableCompanyInfo({
                         ...editableCompanyInfo,
