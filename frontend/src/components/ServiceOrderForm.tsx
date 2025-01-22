@@ -1,7 +1,6 @@
 import { Plus, Trash2 } from "lucide-react";
-import React, { useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
 import { apiClient } from "../api/client";
 import type { ServiceItem } from "../types/ServiceOrder";
 
@@ -13,7 +12,6 @@ export function ServiceOrderForm({ onSuccess }: ServiceOrderFormProps) {
   const [items, setItems] = useState<ServiceItem[]>([]);
   const [message, setMessage] = useState<string>("");
   const { register, handleSubmit, reset } = useForm();
-  const navigate = useNavigate();
 
   const addItem = () => {
     setItems([

@@ -1,4 +1,3 @@
-import React from "react";
 export function DefaultLogo() {
   return (
     <svg

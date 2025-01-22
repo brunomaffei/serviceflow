@@ -1,5 +1,4 @@
 import { LogOut, Moon, Settings, Sun } from "lucide-react";
-import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../contexts/ThemeContext";
 import { DefaultLogo } from "./DefaultLogo";
