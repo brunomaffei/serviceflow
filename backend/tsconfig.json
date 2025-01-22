@@ -2,13 +2,20 @@
   "compilerOptions": {
     "target": "es2017",
     "module": "commonjs",
-    "outDir": "./dist",
+    "lib": ["es2019", "es2020.promise", "es2020.bigint", "es2020.string"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node"
+    "outDir": "dist",
+    "rootDir": ".",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "*": ["node_modules/*"]
+    }
   },
-  "include": ["*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
 }

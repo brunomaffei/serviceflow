@@ -3,18 +3,30 @@ dotenv.config();
 
 import bcrypt from "bcryptjs";
 import cors from "cors";
-import express, { Request, Response } from "express";
+import express, {
+  Request as ExpressRequest,
+  Response as ExpressResponse,
+} from "express";
 import { prisma } from "./prisma/client";
+
+// Definindo tipos específicos para Request e Response
+type Request = ExpressRequest & {
+  body: any;
+  query: any;
+  params: any;
+};
+
+type Response = ExpressResponse & {
+  json: any;
+  status: any;
+};
 
 const app = express();
 
 // Configuração do CORS mais específica
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://your-frontend-domain.vercel.app",
-    ],
+    origin: ["http://localhost:5173", "https://serviceflow-psi.vercel.app/"],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
