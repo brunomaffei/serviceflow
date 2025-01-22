@@ -5,64 +5,64 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+    provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
 }
 
 model User {
-  id          String         @id @default(cuid())
-  email       String         @unique
-  password    String
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  companyInfo CompanyInfo?
-  orders      ServiceOrder[]
+    id          String         @id @default(cuid())
+    email       String         @unique
+    password    String
+    createdAt   DateTime       @default(now())
+    updatedAt   DateTime       @updatedAt
+    companyInfo CompanyInfo?
+    orders      ServiceOrder[]
 }
 
 model CompanyInfo {
-  id      String  @id @default(cuid())
-  name    String
-  cnpj    String
-  address String?
-  phone   String?
-  email   String?
-  userId  String  @unique
-  user    User    @relation(fields: [userId], references: [id])
+    id      String  @id @default(cuid())
+    name    String
+    cnpj    String
+    address String?
+    phone   String?
+    email   String?
+    userId  String  @unique
+    user    User    @relation(fields: [userId], references: [id])
 }
 
 model ServiceOrder {
-  id          String        @id @default(cuid())
-  date        DateTime
-  client      String
-  fleet       String
-  farm        String?
-  description String?
-  total       Float
-  status      OrderStatus   @default(PENDING)
-  items       ServiceItem[]
-  userId      String
-  user        User          @relation(fields: [userId], references: [id])
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+    id          String        @id @default(cuid())
+    date        DateTime
+    client      String
+    fleet       String
+    farm        String?
+    description String?
+    total       Float
+    status      OrderStatus   @default(PENDING)
+    items       ServiceItem[]
+    userId      String
+    user        User          @relation(fields: [userId], references: [id])
+    createdAt   DateTime      @default(now())
+    updatedAt   DateTime      @updatedAt
 }
 
 model ServiceItem {
-  id          String       @id @default(cuid())
-  quantity    Int
-  description String
-  unitPrice   Float
-  total       Float
-  orderId     String
-  order       ServiceOrder @relation(fields: [orderId], references: [id])
+    id          String       @id @default(cuid())
+    quantity    Int
+    description String
+    unitPrice   Float
+    total       Float
+    orderId     String
+    order       ServiceOrder @relation(fields: [orderId], references: [id])
 }
 
 enum OrderStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
+    PENDING
+    IN_PROGRESS
+    COMPLETED
+    CANCELLED
 }
