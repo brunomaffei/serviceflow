@@ -18,10 +18,7 @@ const app = express();
 // Configuração do CORS mais específica
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://your-frontend-domain.vercel.app",
-    ],
+    origin: "*", // Temporariamente permita todas as origens
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
