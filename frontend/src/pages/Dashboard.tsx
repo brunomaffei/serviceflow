@@ -12,12 +12,12 @@ import { DeleteConfirmationModal } from "../components/DeleteConfirmationModal";
 import { Header } from "../components/Header";
 import { PrintableServiceOrder } from "../components/PrintableServiceOrder";
 import { ServiceOrderForm } from "../components/ServiceOrderForm";
-import type { ServiceOrder } from "../types/ServiceOrder";
+import type { ServiceOrderWithDetails } from '../types/ServiceOrder';
 
 export function Dashboard() {
-  const [orders, setOrders] = useState<ServiceOrder[]>([]);
+  const [orders, setOrders] = useState<ServiceOrderWithDetails[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<ServiceOrder | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<ServiceOrderWithDetails | null>(null);
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
 
   const loadOrders = useCallback(async () => {

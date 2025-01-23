@@ -14,17 +14,17 @@ export function ServiceOrderForm({ onSuccess }: ServiceOrderFormProps) {
   const { register, handleSubmit, reset } = useForm();
 
   const addItem = () => {
-    setItems([
-      ...items,
-      {
-        id: crypto.randomUUID(),
-        orderId: crypto.randomUUID(), // Add temporary orderId that will be replaced when the order is created
-        quantity: 0,
-        description: "",
-        unitPrice: 0,
-        total: 0,
-      },
-    ]);
+    const newItem: ServiceItem = {
+      id: crypto.randomUUID(),
+      description: "",
+      quantity: 1,
+      value: 0,
+      serviceOrderId: "",
+      unitPrice: 0,
+      total: 0,
+      orderId: crypto.randomUUID(),
+    };
+    setItems([...items, newItem]);
   };
 
   const removeItem = (id: string) => {

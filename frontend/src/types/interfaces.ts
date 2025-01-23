@@ -38,9 +38,9 @@ export interface ServiceOrder {
   client: string;
   fleet: string;
   farm?: string;
-  user?: User & {
+  user: User & {
     companyInfo: CompanyInfo | null;
   };
   total: number;
-  items?: ServiceItem[];
+  items: ServiceItem[];
 }
