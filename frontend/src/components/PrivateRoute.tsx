@@ -6,5 +6,10 @@ export function PrivateRoute({ children }: { children: React.ReactNode }) {
     return !!user;
   };
 
-  return isAuthenticated() ? <>{children}</> : <Navigate to="/login" replace />;
+  // Se não estiver autenticado, redireciona para 404
+  if (!isAuthenticated()) {
+    return <Navigate to="/404" replace />;
+  }
+
+  return <>{children}</>;
 }

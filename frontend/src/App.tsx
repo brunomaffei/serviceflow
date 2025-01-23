@@ -4,6 +4,7 @@ import { PrivateRoute } from "./components/PrivateRoute";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
+import { NotFound } from "./pages/NotFound";
 import { Profile } from "./pages/Profile";
 
 function App() {
@@ -43,6 +44,7 @@ function App() {
             }
           />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
