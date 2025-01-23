@@ -4,6 +4,7 @@ export interface CompanyInfo {
   cnpj: string;
   address: string;
   userId: string;
+  phone?: string;
 }
 
 export interface User {
@@ -21,6 +22,9 @@ export interface ServiceItem {
   quantity: number;
   value: number;
   serviceOrderId: string;
+  unitPrice: number;
+  total: number;
+  orderId?: string;
 }
 
 export interface ServiceOrder {
@@ -30,4 +34,11 @@ export interface ServiceOrder {
   userId: string;
   createdAt: Date;
   updatedAt: Date;
+  date: Date;
+  client: string;
+  fleet: string;
+  farm?: string;
+  user?: User & {
+    companyInfo: CompanyInfo | null;
+  };
 }

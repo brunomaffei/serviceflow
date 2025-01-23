@@ -1,10 +1,9 @@
 import { ArrowLeft, Printer } from "lucide-react";
-import React from "react";
-import type { ServiceOrder } from "../types/ServiceOrder";
+import type { ServiceOrderWithDetails } from "../types/ServiceOrder";
 import { DefaultLogo } from "./DefaultLogo";
 
 interface PrintableServiceOrderProps {
-  order: ServiceOrder;
+  order: ServiceOrderWithDetails;
   onClose: () => void;
 }
 
