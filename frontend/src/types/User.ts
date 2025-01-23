@@ -1,5 +1,5 @@
-import type { CompanyInfo, Users as PrismaUser } from "@prisma/client";
+import type { CompanyInfo, User as IUser } from "./interfaces";
 
-export type User = Omit<PrismaUser, "password"> & {
+export type User = Omit<IUser, "password"> & {
   companyInfo?: CompanyInfo | null;
 };

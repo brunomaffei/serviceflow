@@ -3,7 +3,7 @@ import type {
   ServiceItem,
   ServiceOrder,
   User,
-} from "@prisma/client";
+} from "./interfaces";
 
 export type ServiceOrderWithDetails = ServiceOrder & {
   items: ServiceItem[];
