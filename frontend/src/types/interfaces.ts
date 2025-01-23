@@ -41,4 +41,6 @@ export interface ServiceOrder {
   user?: User & {
     companyInfo: CompanyInfo | null;
   };
+  total: number;
+  items?: ServiceItem[];
 }
