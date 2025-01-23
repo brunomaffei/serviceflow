@@ -9,7 +9,8 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/"
     }
-  ]
+  ],
+  "framework": "create-react-app"
 }
