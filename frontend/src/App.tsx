@@ -1,8 +1,7 @@
 import { useEffect } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { PrivateRoute } from "./components/PrivateRoute";
-import { PublicRoute } from "./components/PublicRoute";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { AuthLayout } from "./layouts/AuthLayout";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
 import { NotFound } from "./pages/NotFound";
@@ -26,34 +25,15 @@ function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
-        <Routes>
-          {/* Rota raiz - redireciona baseado na autenticação */}
-          <Route path="/" element={<PublicRoute />} />
-
-          {/* Rotas públicas */}
-          <Route path="/login" element={<Login />} />
-
-          {/* Rotas protegidas */}
-          <Route
-            path="/dashboard"
-            element={
-              <PrivateRoute>
-                <Dashboard />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/perfil"
-            element={
-              <PrivateRoute>
-                <Profile />
-              </PrivateRoute>
-            }
-          />
-
-          {/* Rota 404 para caminhos não encontrados */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthLayout>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/perfil" element={<Profile />} />
+            <Route path="/" element={<Dashboard />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthLayout>
       </BrowserRouter>
     </ThemeProvider>
   );

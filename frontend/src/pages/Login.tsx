@@ -11,15 +11,9 @@ export function Login() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Verificar se já está autenticado
-    const user = localStorage.getItem("currentUser");
-    if (user) {
-      navigate("/dashboard");
-    }
-
-    // Create initial admin user when component mounts
+    // Apenas inicializa o admin
     apiClient.initializeAdmin().catch(console.error);
-  }, [navigate]);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
