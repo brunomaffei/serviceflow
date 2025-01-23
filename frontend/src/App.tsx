@@ -1,6 +1,7 @@
 import { useEffect } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { PrivateRoute } from "./components/PrivateRoute";
+import { PublicRoute } from "./components/PublicRoute";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
@@ -26,7 +27,13 @@ function App() {
     <ThemeProvider>
       <BrowserRouter>
         <Routes>
+          {/* Rota raiz - redireciona baseado na autenticação */}
+          <Route path="/" element={<PublicRoute />} />
+
+          {/* Rotas públicas */}
           <Route path="/login" element={<Login />} />
+
+          {/* Rotas protegidas */}
           <Route
             path="/dashboard"
             element={
@@ -43,7 +50,8 @@ function App() {
               </PrivateRoute>
             }
           />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+          {/* Rota 404 para caminhos não encontrados */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
