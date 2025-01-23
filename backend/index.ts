@@ -23,16 +23,35 @@ type Response = ExpressResponse & {
 
 const app = express();
 
-// Configuração do CORS mais específica
+// Configuração do CORS atualizada
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://serviceflow-psi.vercel.app/"],
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: [
+      "https://serviceflow-r5m9.vercel.app", // seu frontend em produção
+      "http://localhost:5173", // seu frontend local
+      "http://localhost:3000", // caso use outra porta local
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
 
+// Middleware para logging de requisições
+app.use((req: Request, res: Response, next) => {
+  console.log(`${req.method} ${req.url}`);
+  console.log("Headers:", req.headers);
+  next();
+});
+
 app.use(express.json());
+
+// Adicione um endpoint de teste CORS
+app.options("*", cors()); // habilita pre-flight para todas as rotas
+
+app.get("/api/test-cors", (req: Request, res: Response) => {
+  res.json({ message: "CORS está funcionando!" });
+});
 
 // Healthcheck route
 app.get("/api/healthcheck", async (_req: Request, res: Response) => {
