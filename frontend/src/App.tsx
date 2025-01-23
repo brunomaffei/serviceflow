@@ -2,10 +2,35 @@ import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { Clients } from "./pages/Clients";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
 import { NotFound } from "./pages/NotFound";
+import { Products } from "./pages/Products";
 import { Profile } from "./pages/Profile";
+import { ServiceOrders } from "./pages/ServiceOrders";
+import { UserManagement } from "./pages/UserManagement";
+
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  allowedRoles: string[];
+}
+
+function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+  const isAuthenticated = !!currentUser?.id;
+  const hasPermission = allowedRoles.includes(currentUser?.role || "");
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  if (!hasPermission) {
+    return <Navigate to="/dashboard" />;
+  }
+
+  return <>{children}</>;
+}
 
 function App() {
   useEffect(() => {
@@ -30,9 +55,9 @@ function App() {
           <Route
             path="/dashboard"
             element={
-              <PrivateRoute>
+              <ProtectedRoute allowedRoles={["ADMIN", "USER"]}>
                 <Dashboard />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
           <Route
@@ -41,6 +66,31 @@ function App() {
               <PrivateRoute>
                 <Profile />
               </PrivateRoute>
+            }
+          />
+          <Route
+            path="/produtos"
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN"]}>
+                <Products />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/clientes" element={<Clients />} />
+          <Route
+            path="/service-orders"
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN", "USER"]}>
+                <ServiceOrders />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/usuarios"
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN"]}>
+                <UserManagement />
+              </ProtectedRoute>
             }
           />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

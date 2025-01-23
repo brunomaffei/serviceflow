@@ -1,5 +1,7 @@
 import type {
+  Client,
   CompanyInfo,
+  Product,
   ServiceItem,
   ServiceOrder,
   User,
@@ -12,4 +14,4 @@ export type ServiceOrderWithDetails = ServiceOrder & {
   };
 };
 
-export type { CompanyInfo, ServiceItem, ServiceOrder, User };
+export type { Client, CompanyInfo, Product, ServiceItem, ServiceOrder, User };

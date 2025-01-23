@@ -44,3 +44,29 @@ export interface ServiceOrder {
   total: number;
   items: ServiceItem[];
 }
+
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  unit: "METERS" | "UNITS";
+  createdAt: string;
+}
+
+export interface Client {
+  id: string;
+  type: "PF" | "PJ";
+  name: string;
+  document: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  companyName?: string | null;
+  tradingName?: string | null;
+  stateRegistration?: string | null;
+  createdAt: string;
+  userId: string;
+}

@@ -29,10 +29,10 @@ app.use(
     origin: [
       "https://serviceflow-r5m9.vercel.app", // seu frontend em produção
       "http://localhost:5173", // seu frontend local
-      "http://localhost:3000", // caso use outra porta local
+      "http://localhost:3001",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "admin-id"], // Adicionar admin-id aqui
     credentials: true,
   })
 );
@@ -77,7 +77,6 @@ app.get("/api/healthcheck", async (_req: Request, res: Response) => {
 app.get("/api/company-info/:userId", async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
-    console.log("Fetching company info for userId:", userId);
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -257,6 +256,63 @@ app.get("/api/service-orders", async (req: Request, res: Response) => {
   }
 });
 
+app.put("/api/service-orders/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { items, ...orderData } = req.body;
+
+    // Primeiro, atualizar a ordem
+    const updatedOrder = await prisma.serviceOrder.update({
+      where: { id },
+      data: {
+        client: orderData.client,
+        date: new Date(orderData.date),
+        fleet: orderData.fleet,
+        farm: orderData.farm || "",
+        description: orderData.description || "",
+        total: Number(orderData.total),
+      },
+    });
+
+    // Depois, deletar os itens existentes
+    await prisma.serviceItem.deleteMany({
+      where: { orderId: id },
+    });
+
+    // Por fim, criar os novos itens
+    const newItems = await prisma.serviceItem.createMany({
+      data: items.map((item: any) => ({
+        quantity: Number(item.quantity),
+        description: item.description,
+        unitPrice: Number(item.unitPrice),
+        total: Number(item.total),
+        orderId: id,
+      })),
+    });
+
+    // Buscar a ordem atualizada com os novos itens
+    const orderWithItems = await prisma.serviceOrder.findUnique({
+      where: { id },
+      include: {
+        items: true,
+        user: {
+          include: {
+            companyInfo: true,
+          },
+        },
+      },
+    });
+
+    res.json(orderWithItems);
+  } catch (error) {
+    console.error("Erro ao atualizar ordem de serviço:", error);
+    res.status(500).json({
+      error: "Erro ao atualizar ordem de serviço",
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
 app.delete("/api/service-orders/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -281,6 +337,184 @@ app.delete("/api/service-orders/:id", async (req: Request, res: Response) => {
   }
 });
 
+// Products routes
+app.post("/api/products", async (req: Request, res: Response) => {
+  try {
+    const product = await prisma.product.create({
+      data: req.body,
+    });
+    res.json(product);
+  } catch (error) {
+    console.error("Error creating product:", error);
+    res.status(500).json({ error: "Error creating product" });
+  }
+});
+
+app.get("/api/products", async (_req: Request, res: Response) => {
+  try {
+    const products = await prisma.product.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+    res.json(products);
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    res.status(500).json({ error: "Error fetching products" });
+  }
+});
+
+app.put("/api/products/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, price, quantity, unit } = req.body;
+
+    const product = await prisma.product.update({
+      where: { id },
+      data: {
+        name: String(name),
+        price: Number(price),
+        quantity: Math.round(Number(quantity)), // Ensure integer
+        unit: unit as "UNITS" | "METERS", // Ensure correct enum type
+      },
+    });
+    res.json(product);
+  } catch (error) {
+    console.error("Error updating product:", error);
+    res.status(500).json({
+      error: "Error updating product",
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+app.delete("/api/products/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await prisma.product.delete({
+      where: { id },
+    });
+    res.json({ message: "Product deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting product:", error);
+    res.status(500).json({ error: "Error deleting product" });
+  }
+});
+
+app.post("/api/clients", async (req: Request, res: Response) => {
+  try {
+    const clientData = req.body;
+
+    // Detailed validation
+    const requiredFields = ["type", "name", "document", "userId"];
+    const missingFields = requiredFields.filter((field) => !clientData[field]);
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        error: "Missing required fields",
+        missingFields,
+        received: clientData,
+      });
+    }
+
+    // Validate user exists
+    const userExists = await prisma.user.findUnique({
+      where: { id: String(clientData.userId) },
+    });
+
+    if (!userExists) {
+      return res.status(400).json({
+        error: "Invalid userId",
+        details: "The specified user does not exist",
+        receivedUserId: clientData.userId,
+      });
+    }
+
+    // Validate client type
+    if (!["PF", "PJ"].includes(clientData.type)) {
+      return res.status(400).json({
+        error: "Invalid client type",
+        details: "Type must be either 'PF' or 'PJ'",
+        receivedType: clientData.type,
+      });
+    }
+
+    // Create client with validated data
+    const client = await prisma.client.create({
+      data: {
+        type: String(clientData.type),
+        name: String(clientData.name),
+        document: String(clientData.document),
+        email: clientData.email || null,
+        phone: clientData.phone || null,
+        address: clientData.address || null,
+        city: clientData.city || null,
+        state: clientData.state || null,
+        companyName: clientData.companyName || null,
+        tradingName: clientData.tradingName || null,
+        stateRegistration: clientData.stateRegistration || null,
+        userId: String(clientData.userId),
+      },
+    });
+    res.json(client);
+  } catch (error) {
+    console.error("Detailed error creating client:", error);
+    res.status(500).json({
+      error: "Error creating client",
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+app.get("/api/clients", async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: "UserId is required" });
+    }
+
+    const clients = await prisma.client.findMany({
+      where: { userId: String(userId) },
+      orderBy: { createdAt: "desc" },
+    });
+    res.json(clients);
+  } catch (error) {
+    console.error("Error fetching clients:", error);
+    res.status(500).json({ error: "Error fetching clients" });
+  }
+});
+
+app.put("/api/clients/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const clientData = req.body;
+
+    const client = await prisma.client.update({
+      where: { id },
+      data: clientData,
+    });
+    res.json(client);
+  } catch (error) {
+    console.error("Error updating client:", error);
+    res.status(500).json({
+      error: "Error updating client",
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+app.delete("/api/clients/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await prisma.client.delete({
+      where: { id },
+    });
+    res.json({ message: "Client deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting client:", error);
+    res.status(500).json({ error: "Error deleting client" });
+  }
+});
+
 // Dashboard routes
 app.get("/api/dashboard/stats", async (req: Request, res: Response) => {
   try {
@@ -299,6 +533,110 @@ app.get("/api/dashboard/stats", async (req: Request, res: Response) => {
     });
   } catch (error) {
     res.status(500).json({ error: "Erro ao buscar estatísticas" });
+  }
+});
+
+// New endpoint for creating users (admin only)
+app.post("/api/users", async (req: Request, res: Response) => {
+  try {
+    const { email, password, role } = req.body;
+    const adminId = req.headers["admin-id"]; // Add this header when making requests
+
+    // Check if creator is admin
+    const admin = await prisma.user.findUnique({
+      where: { id: String(adminId) },
+    });
+
+    if (!admin || admin.role !== "ADMIN") {
+      return res.status(403).json({ error: "Only admins can create users" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        role: role || "USER",
+      },
+    });
+
+    const { password: _, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
+  } catch (error) {
+    res.status(500).json({ error: "Error creating user" });
+  }
+});
+
+// Get all users (admin only)
+app.get("/api/users", async (req: Request, res: Response) => {
+  try {
+    const adminId = req.headers["admin-id"];
+
+    const admin = await prisma.user.findUnique({
+      where: { id: String(adminId) },
+    });
+
+    if (!admin || admin.role !== "ADMIN") {
+      return res.status(403).json({ error: "Only admins can list users" });
+    }
+
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        companyInfo: true,
+      },
+    });
+
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching users" });
+  }
+});
+
+// User management routes
+app.post("/api/users", async (req: Request, res: Response) => {
+  try {
+    const { email, password, role } = req.body;
+    const adminId = req.headers["admin-id"];
+
+    // Verificar se o usuário é admin
+    const admin = await prisma.user.findUnique({
+      where: { id: String(adminId) },
+    });
+
+    if (!admin || admin.role !== "ADMIN") {
+      return res
+        .status(403)
+        .json({ error: "Apenas administradores podem criar usuários" });
+    }
+
+    // Verificar se o email já existe
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ error: "Email já está em uso" });
+    }
+
+    // Criar novo usuário
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        role: role || "USER",
+      },
+    });
+
+    const { password: _, ...userWithoutPassword } = newUser;
+    res.status(201).json(userWithoutPassword);
+  } catch (error) {
+    console.error("Error creating user:", error);
+    res.status(500).json({ error: "Erro ao criar usuário" });
   }
 });
 

@@ -1,10 +1,11 @@
-import { ArrowLeft, Camera, Upload } from "lucide-react";
+import { ArrowLeft, Camera, Loader2, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import InputMask from "react-input-mask";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { DefaultLogo } from "../components/DefaultLogo";
 import { Header } from "../components/Header";
+import { useTheme } from "../contexts/ThemeContext";
 import { User } from "../types/User";
 
 export function Profile() {
@@ -20,6 +21,7 @@ export function Profile() {
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [editableCompanyInfo, setEditableCompanyInfo] = useState<any>(null);
+  const { isDark } = useTheme();
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -134,10 +136,20 @@ export function Profile() {
     }
   }, [companyInfo]);
 
-  if (!user || loading) return <div>Carregando...</div>;
+  if (!user || loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div
+      className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${
+        isDark ? "dark" : ""
+      }`}
+    >
       <Header />
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="mb-6 flex items-center justify-between">

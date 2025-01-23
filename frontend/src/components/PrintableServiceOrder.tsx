@@ -97,7 +97,69 @@ export function PrintableServiceOrder({
         </div>
       </div>
 
-      {/* ...rest of the existing component (items table, totals, etc)... */}
+      {/* Items Table */}
+      <div className="mb-8">
+        <h3 className="text-lg font-semibold mb-4">Itens do Serviço</h3>
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200">
+              <th className="py-2 text-left text-gray-600 w-20">Qtd.</th>
+              <th className="py-2 text-left text-gray-600">Descrição</th>
+              <th className="py-2 text-right text-gray-600 w-32">
+                Valor Unit.
+              </th>
+              <th className="py-2 text-right text-gray-600 w-32">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {order.items.map((item, index) => (
+              <tr
+                key={item.id}
+                className={`${
+                  index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                } border-b border-gray-200`}
+              >
+                <td className="py-3">{item.quantity}</td>
+                <td className="py-3">{item.description}</td>
+                <td className="py-3 text-right">
+                  R$ {item.unitPrice.toFixed(2)}
+                </td>
+                <td className="py-3 text-right">R$ {item.total.toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Totals */}
+      <div className="flex justify-end mb-8">
+        <div className="w-64">
+          <div className="flex justify-between py-2 border-b border-gray-200">
+            <span className="text-gray-600">Subtotal:</span>
+            <span className="font-medium">R$ {order.total.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between py-2 text-lg font-bold">
+            <span>Total:</span>
+            <span>R$ {order.total.toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Signature Section */}
+      <div className="mt-16 pt-16 border-t border-gray-200">
+        <div className="grid grid-cols-2 gap-8">
+          <div className="text-center">
+            <div className="border-t border-gray-300 w-64 mx-auto mt-8"></div>
+            <p className="text-gray-600 mt-2">
+              {companyInfo?.name || "Empresa"}
+            </p>
+          </div>
+          <div className="text-center">
+            <div className="border-t border-gray-300 w-64 mx-auto mt-8"></div>
+            <p className="text-gray-600 mt-2">Cliente</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

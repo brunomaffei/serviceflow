@@ -21,13 +21,28 @@ const cors_1 = __importDefault(require("cors"));
 const express_1 = __importDefault(require("express"));
 const client_1 = require("./prisma/client");
 const app = (0, express_1.default)();
-// Configuração do CORS mais específica
+// Configuração do CORS atualizada
 app.use((0, cors_1.default)({
-    origin: ["http://localhost:5173", "https://serviceflow-psi.vercel.app/"],
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: [
+        "https://serviceflow-r5m9.vercel.app", // seu frontend em produção
+        "http://localhost:5173", // seu frontend local
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
 }));
+// Middleware para logging de requisições
+app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    console.log("Headers:", req.headers);
+    next();
+});
 app.use(express_1.default.json());
+// Adicione um endpoint de teste CORS
+app.options("*", (0, cors_1.default)()); // habilita pre-flight para todas as rotas
+app.get("/api/test-cors", (req, res) => {
+    res.json({ message: "CORS está funcionando!" });
+});
 // Healthcheck route
 app.get("/api/healthcheck", async (_req, res) => {
     try {
@@ -236,6 +251,58 @@ app.delete("/api/service-orders/:id", async (req, res) => {
             error: "Erro ao deletar ordem de serviço",
             details: error instanceof Error ? error.message : String(error),
         });
+    }
+});
+// Products routes
+app.post("/api/products", async (req, res) => {
+    try {
+        const product = await client_1.prisma.product.create({
+            data: req.body,
+        });
+        res.json(product);
+    }
+    catch (error) {
+        console.error("Error creating product:", error);
+        res.status(500).json({ error: "Error creating product" });
+    }
+});
+app.get("/api/products", async (_req, res) => {
+    try {
+        const products = await client_1.prisma.product.findMany({
+            orderBy: { createdAt: "desc" },
+        });
+        res.json(products);
+    }
+    catch (error) {
+        console.error("Error fetching products:", error);
+        res.status(500).json({ error: "Error fetching products" });
+    }
+});
+app.put("/api/products/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const product = await client_1.prisma.product.update({
+            where: { id },
+            data: req.body,
+        });
+        res.json(product);
+    }
+    catch (error) {
+        console.error("Error updating product:", error);
+        res.status(500).json({ error: "Error updating product" });
+    }
+});
+app.delete("/api/products/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        await client_1.prisma.product.delete({
+            where: { id },
+        });
+        res.json({ message: "Product deleted successfully" });
+    }
+    catch (error) {
+        console.error("Error deleting product:", error);
+        res.status(500).json({ error: "Error deleting product" });
     }
 });
 // Dashboard routes
