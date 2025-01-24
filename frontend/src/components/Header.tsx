@@ -56,8 +56,6 @@ export function Header() {
   const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
   const isAdmin = currentUser?.role === "ADMIN";
 
-  console.log(isAdmin, "@@ADMIN");
-
   // Filtra os itens baseado no role do usuário e mantém a ordem
   const filteredNavItems = navItems.filter((item) =>
     item.allowedRoles.includes(currentUser?.role || "")

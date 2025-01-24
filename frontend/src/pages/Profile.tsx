@@ -36,7 +36,6 @@ export function Profile() {
 
       try {
         const companyData = await apiClient.getCompanyInfo(userData.id);
-        console.log(companyData, "@@COMPANY");
         setCompanyInfo(companyData);
       } catch (error) {
         console.error("Error loading company info:", error);

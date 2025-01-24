@@ -88,7 +88,6 @@ export const apiClient = {
   async getCompanyInfo(userId: string) {
     try {
       const { data } = await api.get(`/company-info/${userId}`);
-      console.log(data, "@@DATA");
       return data.companyInfo;
     } catch (error) {
       console.error("Error fetching company info:", error);
