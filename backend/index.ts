@@ -30,6 +30,7 @@ app.use(
       "http://localhost:5173",
       "http://localhost:3001",
       "https://serviceflow-9coy.vercel.app/",
+      "http://localhost:3001/api/init",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "admin-id"],
