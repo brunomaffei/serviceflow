@@ -5,9 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "server": "tsx watch --loader ts-node/esm server/index.ts",
+    "dev:all": "concurrently -n \"frontend,backend\" \"pnpm run dev\" \"pnpm run server\"",
+    "init-db": "prisma generate && prisma migrate reset --force",
+    "db:reset": "prisma migrate reset --force && prisma generate && prisma db seed",
+    "vercel-build": "prisma generate && prisma migrate deploy",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",
