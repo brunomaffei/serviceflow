@@ -11,7 +11,7 @@ import {
   User2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { apiClient } from "../api/client";
@@ -28,8 +28,6 @@ export function Clients() {
   const [clientToDelete, setClientToDelete] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { isDark, toggleTheme } = useTheme();
-
-  const navigate = useNavigate();
 
   useEffect(() => {
     loadClients();
