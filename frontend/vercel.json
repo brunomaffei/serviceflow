@@ -12,15 +12,11 @@
   ],
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/api/(.*)",
       "headers": [
         {
-          "key": "x-vercel-enable-rewrite-caching",
-          "value": "1"
-        },
-        {
           "key": "Access-Control-Allow-Origin",
-          "value": "*"
+          "value": "https://serviceflow-frontend.vercel.app"
         },
         {
           "key": "Access-Control-Allow-Methods",
