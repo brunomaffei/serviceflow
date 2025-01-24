@@ -1,19 +1,23 @@
 {
   "version": 2,
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "https://serviceflow-psi.vercel.app/api/$1"
+      "source": "/api/:path*",
+      "destination": "https://serviceflow-psi.vercel.app/api/:path*"
     },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "1"
+        },
         {
           "key": "Access-Control-Allow-Origin",
           "value": "*"
