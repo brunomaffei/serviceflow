@@ -31,6 +31,7 @@ app.use(
       "http://localhost:3001",
       "https://serviceflow-9coy.vercel.app/",
       "http://localhost:3001/api/init",
+      "https://serviceflow-9coy.vercel.app", // Adicione a origem do frontend na Vercel
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "admin-id"],
@@ -145,36 +146,52 @@ const ADMIN_PASSWORD = "123";
 // Adicionar rota para criar usuário inicial
 app.post("/api/init", async (_req: Request, res: Response) => {
   try {
+    console.log("Iniciando criação do usuário admin...");
+
     const existingAdmin = await prisma.user.findUnique({
       where: { email: ADMIN_EMAIL },
     });
 
-    if (!existingAdmin) {
-      const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 10);
-      const user = await prisma.user.create({
-        data: {
-          email: ADMIN_EMAIL,
-          password: hashedPassword,
-          companyInfo: {
-            create: {
-              name: "Mecânica Rocha",
-              cnpj: "41.008.040/0001-67",
-              address: "Rua Eliazar Braga o-416 - CENTRO",
-              phone: "(14) 99650-2602",
-              email: "mecanicarocha21@gmail.com",
-            },
+    if (existingAdmin) {
+      console.log("Admin já existe:", existingAdmin.email);
+      return res.status(200).json({
+        message: "Admin user already exists",
+        email: existingAdmin.email,
+      });
+    }
+
+    console.log("Criando novo usuário admin...");
+    const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        email: ADMIN_EMAIL,
+        password: hashedPassword,
+        role: "ADMIN", // Corrigir o campo role para ADMIN
+        companyInfo: {
+          create: {
+            name: "Mecânica Rocha",
+            cnpj: "41.008.040/0001-67",
+            address: "Rua Eliazar Braga o-416 - CENTRO",
+            phone: "(14) 99650-2602",
+            email: "mecanicarocha21@gmail.com",
           },
         },
-        include: {
-          companyInfo: true,
-        },
-      });
-      res.json(user);
-    } else {
-      res.json({ message: "Admin user already exists" });
-    }
+      },
+      include: {
+        companyInfo: true,
+      },
+    });
+
+    console.log("Admin criado com sucesso:", user.email);
+    const { password: _, ...userWithoutPassword } = user;
+    return res.status(201).json(userWithoutPassword);
   } catch (error) {
-    res.status(500).json({ error: "Error creating initial user" });
+    console.error("Erro ao criar usuário admin:", error);
+    return res.status(500).json({
+      error: "Error creating initial user",
+      details: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 
