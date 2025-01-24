@@ -27,11 +27,9 @@ const app = express();
 app.use(
   cors({
     origin: [
-      "https://serviceflow-frontend-brunomaffei.vercel.app",
-      "https://serviceflow-r5m9.vercel.app",
       "http://localhost:5173",
       "http://localhost:3001",
-      "https://serviceflow-frontend.vercel.app", // adicione essa origem sem a barra no final
+      "https://serviceflow-9coy.vercel.app/",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "admin-id"],
