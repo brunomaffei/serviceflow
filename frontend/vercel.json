@@ -16,6 +16,9 @@
       "destination": "/index.html"
     }
   ],
+  "env": {
+    "NODE_ENV": "production"
+  },
   "cleanUrls": true,
   "headers": [
     {
@@ -27,7 +30,7 @@
         },
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "https://serviceflow-frontend.vercel.app"
+          "value": "*"
         },
         {
           "key": "Access-Control-Allow-Methods",
