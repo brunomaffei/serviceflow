@@ -2,12 +2,12 @@
   "version": 2,
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://serviceflow-psi.vercel.app/api/:path*"
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/api/:path*",
+      "destination": "https://serviceflow-psi.vercel.app/api/:path*"
     }
   ],
   "headers": [
