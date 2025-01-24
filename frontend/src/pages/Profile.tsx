@@ -87,7 +87,6 @@ export function Profile() {
       localStorage.setItem("companyLogo", base64String);
       setMessage("Logo atualizado com sucesso!");
       setMessageType("success");
-      // Force a re-render of the whole app
       window.location.reload();
     };
     reader.readAsDataURL(file);
@@ -95,7 +94,6 @@ export function Profile() {
 
   const handleEditToggle = () => {
     if (editMode) {
-      // Se estiver salvando
       handleSaveCompanyInfo();
     }
     setEditMode(!editMode);
