@@ -29,9 +29,8 @@ app.use(
     origin: [
       "http://localhost:5173",
       "http://localhost:3001",
-      "https://serviceflow-9coy.vercel.app/",
-      "http://localhost:3001/api/init",
-      "https://serviceflow-9coy.vercel.app", // Adicione a origem do frontend na Vercel
+      "https://serviceflow-9coy.vercel.app",
+      "https://serviceflow-frontend.vercel.app", // Adicione a origem do frontend na Vercel
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "admin-id"],
