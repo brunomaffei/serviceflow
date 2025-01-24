@@ -44,12 +44,6 @@ export function Dashboard() {
     setShowForm(true);
   };
 
-  const handleOrderSuccess = () => {
-    setShowForm(false);
-    setSelectedOrderForEdit(null);
-    loadOrders();
-  };
-
   const handleDeleteOrder = async (orderId: string) => {
     try {
       await apiClient.deleteServiceOrder(orderId);
