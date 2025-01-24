@@ -22,25 +22,25 @@ export function Header() {
       name: "Dashboard",
       icon: TrendingUp,
       path: "/dashboard",
-      allowedRoles: ["ADMIN", "USER"], // todos podem ver
+      allowedRoles: ["ADMIN", "USER"],
     },
     {
-      name: "Ordens", // Mudado de "Ordens de Serviço" para "Ordens"
-      icon: FileText, // adicione o import
+      name: "Ordens",
+      icon: FileText,
       path: "/service-orders",
-      allowedRoles: ["ADMIN", "USER"], // todos podem ver
+      allowedRoles: ["ADMIN", "USER"],
     },
     {
       name: "Produtos",
       icon: Package,
       path: "/produtos",
-      allowedRoles: ["ADMIN"], // apenas admin
+      allowedRoles: ["ADMIN"],
     },
     {
       name: "Clientes",
       icon: Users,
       path: "/clientes",
-      allowedRoles: ["ADMIN"], // apenas admin
+      allowedRoles: ["ADMIN"],
     },
   ];
 
@@ -49,7 +49,7 @@ export function Header() {
       name: "Usuários",
       icon: Users,
       path: "/usuarios",
-      allowedRoles: ["ADMIN"], // apenas admin
+      allowedRoles: ["ADMIN"],
     },
   ];
 
