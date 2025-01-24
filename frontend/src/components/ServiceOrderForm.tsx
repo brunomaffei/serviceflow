@@ -34,7 +34,6 @@ export function ServiceOrderForm({
   existingOrder,
 }: ServiceOrderFormProps) {
   const [items, setItems] = useState<ServiceItem[]>([]);
-  const [message, setMessage] = useState<string>("");
   const [products, setProducts] = useState<Product[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [showProductSearch, setShowProductSearch] = useState(false);
