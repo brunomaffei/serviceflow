@@ -1,5 +1,6 @@
 import { FileText, TrendingUp, Users } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { DeleteConfirmationModal } from "../components/DeleteConfirmationModal";
 import { Layout } from "../components/Layout";
@@ -9,6 +10,7 @@ import { ServiceOrderList } from "../components/ServiceOrderList";
 import type { ServiceOrderWithDetails } from "../types/ServiceOrder";
 
 export function Dashboard() {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<ServiceOrderWithDetails[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [selectedOrder, setSelectedOrder] =
@@ -17,18 +19,23 @@ export function Dashboard() {
   const [selectedOrderForEdit, setSelectedOrderForEdit] =
     useState<ServiceOrderWithDetails | null>(null);
   const [loading, setLoading] = useState(true); // Add loading state
+  const [error, setError] = useState<string | null>(null); // Add error state
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const currentUser = JSON.parse(
         localStorage.getItem("currentUser") || "{}"
       );
-      if (!currentUser.id) return;
+      if (!currentUser.id) {
+        throw new Error("Usuário não autenticado");
+      }
       const ordersData = await apiClient.getServiceOrders(currentUser.id);
       setOrders(Array.isArray(ordersData) ? ordersData : []);
     } catch (error) {
       console.error("Error loading orders:", error);
+      setError("Erro ao carregar as ordens de serviço");
       setOrders([]);
     } finally {
       setLoading(false);
@@ -36,8 +43,13 @@ export function Dashboard() {
   }, []);
 
   useEffect(() => {
+    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    if (!currentUser.id) {
+      navigate("/login");
+      return;
+    }
     loadOrders();
-  }, [loadOrders]);
+  }, [loadOrders, navigate]);
 
   const handleEdit = (order: ServiceOrderWithDetails) => {
     setSelectedOrderForEdit(order);
@@ -118,6 +130,11 @@ export function Dashboard() {
   return (
     <Layout>
       <div className="py-8">
+        {error && (
+          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-md">
+            {error}
+          </div>
+        )}
         {/* Stats Grid */}
         {loading ? (
           <StatsSkeleton />

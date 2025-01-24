@@ -18,15 +18,26 @@ interface ProtectedRouteProps {
 
 function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+
+  // Simplificada: verifica apenas ID e role
   const isAuthenticated = !!currentUser?.id;
-  const hasPermission = allowedRoles.includes(currentUser?.role || "");
+  const hasPermission = allowedRoles.includes(currentUser?.role || "USER"); // default to USER
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      console.log("Não autenticado:", currentUser);
+      localStorage.removeItem("currentUser");
+    }
+  }, [isAuthenticated, currentUser]);
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+    console.log("Redirecionando para login: dados inválidos"); // Debug
+    return <Navigate to="/login" replace />;
   }
 
   if (!hasPermission) {
-    return <Navigate to="/dashboard" />;
+    console.log("Sem permissão necessária"); // Debug
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

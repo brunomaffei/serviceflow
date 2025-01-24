@@ -48,14 +48,13 @@ export const apiClient = {
     }
   },
 
-  async login(email: string, password: string) {
-    try {
-      const { data } = await api.post("/auth/login", { email, password });
-      return data;
-    } catch (error) {
-      console.error("Login error:", error);
-      throw error;
-    }
+  login: async (email: string, password: string) => {
+    // Usar a instância 'api' configurada ao invés de 'axios'
+    const response = await api.post("/auth/login", {
+      email,
+      password,
+    });
+    return response.data;
   },
 
   async createServiceOrder(orderData: any) {

@@ -21,13 +21,23 @@ export function Login() {
     setIsLoading(true);
 
     try {
-      const user = await apiClient.login(email, password);
-      if (user) {
-        localStorage.setItem("currentUser", JSON.stringify(user));
-        navigate("/dashboard");
-      }
+      // Corrigido: passando email e password separadamente
+      const response = await apiClient.login(email, password);
+
+      const userData = {
+        id: response.id,
+        email: response.email,
+        role: response.role || "ADMIN", // Use o role da resposta se existir
+        companyInfo: response.companyInfo,
+        createdAt: response.createdAt,
+        updatedAt: response.updatedAt,
+      };
+
+      console.log("Login response:", response); // Debug
+      localStorage.setItem("currentUser", JSON.stringify(userData));
+      navigate("/dashboard");
     } catch (error: any) {
-      console.error("Login error:", error);
+      console.error("Erro no login:", error);
       setError(
         error?.response?.data?.error ||
           "Credenciais inválidas. Por favor, tente novamente."
