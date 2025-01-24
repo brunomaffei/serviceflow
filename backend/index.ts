@@ -27,7 +27,7 @@ const app = express();
 app.use(
   cors({
     origin: [
-      "https://serviceflow-r5m9.vercel.app", // seu frontend em produção
+      "https://serviceflow-frontend.vercel.app/", // seu frontend em produção
       "http://localhost:5173", // seu frontend local
       "http://localhost:3001",
     ],
