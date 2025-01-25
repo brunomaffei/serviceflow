@@ -275,6 +275,54 @@ app.get("/api/dashboard/stats", async (req: Request, res: Response) => {
   }
 });
 
+// Products routes
+app.get("/api/products", async (_req: Request, res: Response) => {
+  try {
+    const products = await prisma.product.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+    res.status(200).json(products);
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    res.status(500).json({ error: "Failed to fetch products" });
+  }
+});
+
+// Clients routes
+app.get("/api/clients", async (req: Request, res: Response) => {
+  try {
+    const userId = req.query.userId as string;
+    const clients = await prisma.client.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+    });
+    res.status(200).json(clients);
+  } catch (error) {
+    console.error("Error fetching clients:", error);
+    res.status(500).json({ error: "Error fetching clients" });
+  }
+});
+
+// Users routes
+app.get("/api/users/list", async (_req: Request, res: Response) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        createdAt: true,
+        role: true,
+        companyInfo: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    res.status(200).json(users);
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    res.status(500).json({ error: "Erro ao buscar usuários" });
+  }
+});
+
 // Melhor tratamento de erros
 app.use((err: Error, _req: Request, res: Response, _next: any) => {
   console.error("Error:", err);
