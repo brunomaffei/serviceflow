@@ -137,7 +137,16 @@ app.get("/api/health", (_req: Request, res: Response) => {
 app.post("/api/auth/login", async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
-    console.log("Login attempt:", { email });
+    console.log("Login attempt for:", email);
+
+    // Check database connection first
+    try {
+      await prisma.$connect();
+      console.log("Database connected successfully");
+    } catch (dbError) {
+      console.error("Database connection error:", dbError);
+      return res.status(500).json({ error: "Database connection failed" });
+    }
 
     const user = await prisma.user.findUnique({
       where: { email },
@@ -150,17 +159,25 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
       },
     });
 
-    console.log("User found:", { ...user, password: "[HIDDEN]" });
+    console.log("User search result:", user ? "Found" : "Not found");
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ error: "Credenciais inválidas" });
+    if (!user) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: "Invalid password" });
     }
 
     const { password: _, ...userWithoutPassword } = user;
-    res.json(userWithoutPassword);
+    return res.json(userWithoutPassword);
   } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ error: "Erro interno do servidor" });
+    console.error("Detailed login error:", error);
+    return res.status(500).json({
+      error: "Internal server error",
+      details: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 
