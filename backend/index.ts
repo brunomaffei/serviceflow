@@ -6,6 +6,7 @@ import cors from "cors";
 import express, {
   Request as ExpressRequest,
   Response as ExpressResponse,
+  NextFunction,
 } from "express";
 import { prisma } from "./prisma/client";
 import { router } from "./routes";
@@ -74,7 +75,7 @@ app.use(
 );
 
 // Add this middleware after your CORS configuration
-app.use(async (req: Request, res: Response, next) => {
+app.use(async (req: Request, res: Response, next: NextFunction) => {
   try {
     await prisma.$connect();
     next();
@@ -88,7 +89,7 @@ app.use(async (req: Request, res: Response, next) => {
 });
 
 // Middleware para logging de requisições
-app.use((req: Request, res: Response, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   console.log(`${req.method} ${req.url}`);
   console.log("Headers:", req.headers);
   next();
@@ -893,7 +894,7 @@ app.post("/api/users", async (req: Request, res: Response) => {
 });
 
 // Melhor tratamento de erros
-app.use((err: Error, _req: Request, res: Response, _next: any) => {
+app.use((err: Error, _req: Request, res: Response, next: NextFunction) => {
   console.error("Error:", err);
   res.status(500).json({ error: "Erro interno do servidor" });
 });
