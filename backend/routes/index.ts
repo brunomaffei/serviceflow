@@ -1,10 +1,10 @@
-import { Router } from "express";
+import { Request, Response, Router } from "express";
 import { prisma } from "../lib/prisma";
 
 const router = Router();
 
 // Rotas de Produtos
-router.get("/products", async (req, res) => {
+router.get("/products", async (req: Request, res: Response) => {
   try {
     const products = await prisma.product.findMany();
     res.json(products);
@@ -15,7 +15,7 @@ router.get("/products", async (req, res) => {
 });
 
 // Rotas de Clientes
-router.get("/clients", async (req, res) => {
+router.get("/clients", async (req: Request, res: Response) => {
   try {
     const { userId } = req.query;
     const clients = await prisma.client.findMany({
@@ -29,7 +29,7 @@ router.get("/clients", async (req, res) => {
 });
 
 // Rotas de Usuários
-router.get("/users", async (req, res) => {
+router.get("/users", async (req: Request, res: Response) => {
   try {
     const users = await prisma.user.findMany({
       select: {
