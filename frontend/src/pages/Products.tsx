@@ -35,10 +35,16 @@ export function Products() {
     setLoading(true);
     try {
       const data = await apiClient.getProducts();
-      setProducts(data);
-    } catch (error) {
+      if (Array.isArray(data)) {
+        setProducts(data);
+      } else {
+        setProducts([]);
+        toast.error("Formato de dados inválido");
+      }
+    } catch (error: any) {
       console.error("Error loading products:", error);
-      toast.error("Erro ao carregar produtos");
+      setProducts([]);
+      toast.error(error.message || "Erro ao carregar produtos");
     } finally {
       setLoading(false);
     }

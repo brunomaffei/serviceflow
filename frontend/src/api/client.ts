@@ -8,10 +8,31 @@ const api = axios.create({
   },
 });
 
-// Interceptor para tratamento de erros
+// Add request interceptor for debugging
+api.interceptors.request.use(
+  (config) => {
+    console.log(`🚀 Making request to: ${config.baseURL}${config.url}`);
+    return config;
+  },
+  (error) => {
+    console.error("Request error:", error);
+    return Promise.reject(error);
+  }
+);
+
+// Modify response interceptor
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log(`✅ Response from ${response.config.url}:`, response.status);
+    return response;
+  },
   async (error) => {
+    console.error(`❌ Error on ${error.config?.url}:`, {
+      status: error.response?.status,
+      message: error.message,
+      code: error.code,
+    });
+
     if (error.code === "ECONNABORTED") {
       console.error("Request timeout - retrying...");
       try {
@@ -31,7 +52,9 @@ api.interceptors.response.use(
 
     if (error.code === "ERR_NETWORK") {
       return Promise.reject(
-        new Error("Servidor não está respondendo. Verifique sua conexão.")
+        new Error(
+          `Servidor não está respondendo (${error.config?.baseURL}). Verifique sua conexão.`
+        )
       );
     }
 
@@ -102,11 +125,56 @@ export const apiClient = {
   // Products methods
   async getProducts() {
     try {
-      const { data } = await api.get("/products");
-      return data;
+      const response = await api.get("/products", {
+        validateStatus: function (status) {
+          return status < 500; // Consider only 500+ as errors
+        },
+      });
+
+      // Log full response for debugging
+      console.log("Products Response:", {
+        status: response.status,
+        headers: response.headers,
+        data: response.data,
+      });
+
+      if (response.status === 401) {
+        throw new Error("Não autorizado. Por favor, faça login novamente.");
+      }
+
+      if (response.status === 403) {
+        throw new Error("Sem permissão para acessar produtos.");
+      }
+
+      if (response.status >= 400) {
+        throw new Error(response.data?.message || "Erro ao carregar produtos");
+      }
+
+      return Array.isArray(response.data) ? response.data : [];
     } catch (error) {
-      console.error("Error fetching products:", error);
-      throw error;
+      if (axios.isAxiosError(error)) {
+        console.error("Detailed error:", {
+          status: error.response?.status,
+          data: error.response?.data,
+          headers: error.response?.headers,
+          config: error.config,
+        });
+
+        if (error.response?.status === 500) {
+          throw new Error(
+            "Erro interno do servidor. Por favor, tente novamente mais tarde."
+          );
+        }
+
+        if (error.code === "ERR_NETWORK") {
+          throw new Error(
+            "Não foi possível conectar ao servidor. Verifique sua conexão."
+          );
+        }
+      }
+      throw new Error(
+        error instanceof Error ? error.message : "Erro ao carregar produtos"
+      );
     }
   },
 

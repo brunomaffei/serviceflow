@@ -23,14 +23,26 @@ type Response = ExpressResponse & {
 
 const app = express();
 
+// Add this near the top of the file after imports
+const checkDatabaseConnection = async () => {
+  try {
+    await prisma.$connect();
+    console.log("✅ Database connection successful");
+  } catch (error) {
+    console.error("❌ Database connection failed:", error);
+    throw error;
+  }
+};
+
 // Configuração do CORS atualizada
 app.use(
   cors({
     origin: [
+      "https://serviceflow-psi.vercel.app", // Removido o /api
       "http://localhost:5173",
       "http://localhost:3001",
       "https://serviceflow-9coy.vercel.app",
-      "https://serviceflow-frontend.vercel.app", // Adicione a origem do frontend na Vercel
+      "https://serviceflow-frontend.vercel.app",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "admin-id"],
@@ -369,13 +381,30 @@ app.post("/api/products", async (req: Request, res: Response) => {
 
 app.get("/api/products", async (_req: Request, res: Response) => {
   try {
+    // Check database connection before querying
+    await checkDatabaseConnection();
+
     const products = await prisma.product.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
+
     res.json(products);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching products:", error);
-    res.status(500).json({ error: "Error fetching products" });
+
+    if (error.code === "P1017") {
+      return res.status(503).json({
+        error: "Database connection error. Please try again later.",
+        code: error.code,
+      });
+    }
+
+    res.status(500).json({
+      error: "Internal server error while fetching products",
+      details: error.message,
+    });
   }
 });
 
