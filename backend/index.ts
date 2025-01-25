@@ -439,36 +439,42 @@ app.post("/api/products", async (req: Request, res: Response) => {
 
 app.get("/api/products", async (_req: Request, res: Response) => {
   try {
-    // Log início da requisição
-    console.log("Getting products - checking database connection...");
+    // First check if Prisma is connected
+    if (!prisma) {
+      console.error("Prisma client is not initialized");
+      return res.status(500).json({
+        error: "Database client not initialized",
+        details: "Internal server configuration error",
+      });
+    }
 
-    // Verifica conexão com o banco
+    console.log("Checking database connection...");
     await prisma.$connect();
-    console.log("Database connection OK, fetching products...");
 
+    console.log("Database connected, fetching products...");
     const products = await prisma.product.findMany({
       orderBy: { createdAt: "desc" },
     });
 
     console.log(`Found ${products.length} products`);
-    res.json(products);
+    return res.json(products);
   } catch (error: any) {
-    console.error("Database error in /api/products:", {
-      code: error.code,
+    console.error("Products route error:", {
+      name: error.name,
       message: error.message,
-      meta: error.meta,
+      code: error.code,
+      stack: error.stack,
     });
 
-    // Erro específico para problema de conexão com banco
-    if (error.code === "P1001" || error.code === "P1017") {
+    if (error.code === "P2021") {
       return res.status(500).json({
-        error: "Database connection error",
-        details: "Could not connect to the database",
+        error: "Database table not found",
+        details: "The products table might not exist. Run prisma migrate",
       });
     }
 
-    res.status(500).json({
-      error: "Internal server error while fetching products",
+    return res.status(500).json({
+      error: "Failed to fetch products",
       details: error.message,
     });
   }
