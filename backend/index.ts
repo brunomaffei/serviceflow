@@ -53,6 +53,20 @@ app.use(
   })
 );
 
+// Add this middleware after your CORS configuration
+app.use(async (req: Request, res: Response, next) => {
+  try {
+    await prisma.$connect();
+    next();
+  } catch (error) {
+    console.error("Database connection error:", error);
+    return res.status(500).json({
+      error: "Database connection failed",
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
 // Middleware para logging de requisições
 app.use((req: Request, res: Response, next) => {
   console.log(`${req.method} ${req.url}`);
