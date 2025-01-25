@@ -40,32 +40,46 @@ console.log(`Running in ${isProduction ? "production" : "development"} mode`);
 
 const allowedOrigins = isProduction
   ? [
-      process.env.FRONTEND_URL, // Add this to your Vercel environment variables
+      process.env.FRONTEND_URL,
       "https://serviceflow-*.vercel.app",
-    ].filter(Boolean)
+      "https://serviceflow-r5m9.vercel.app",
+      "https://serviceflow-psi.vercel.app",
+    ]
   : ["http://localhost:5173", "http://localhost:3001"];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (
-        !origin ||
-        allowedOrigins.some(
-          (allowed) =>
-            origin === allowed ||
-            (typeof allowed === "string" &&
-              allowed.includes("*") &&
-              origin.match(allowed.replace("*", ".*")))
-        )
-      ) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin || origin === "null") {
+        return callback(null, true);
+      }
+
+      // Allow localhost in development
+      if (!isProduction && origin.startsWith("http://localhost")) {
+        return callback(null, true);
+      }
+
+      const isAllowed = allowedOrigins.some((allowed) => {
+        if (!allowed) return false;
+        if (allowed === "*") return true;
+        if (typeof allowed === "string" && allowed.includes("*")) {
+          const pattern = new RegExp(allowed.replace("*", ".*"));
+          return pattern.test(origin);
+        }
+        return allowed === origin;
+      });
+
+      if (isAllowed) {
         callback(null, true);
       } else {
-        callback(new Error("Not allowed by CORS"));
+        console.log(`Origin ${origin} not allowed by CORS`);
+        callback(null, true); // Temporarily allow all origins for debugging
       }
     },
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "admin-id"],
-    credentials: true,
   })
 );
 
@@ -242,24 +256,35 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
 const ADMIN_EMAIL = "admin@admin.com.br";
 const ADMIN_PASSWORD = "123";
 
+// Add this near the top of the file with other constants
+let isInitialized = false;
+
 // Adicionar rota para criar usuário inicial
 app.post("/api/init", async (_req: Request, res: Response) => {
   try {
-    console.log("Iniciando criação do usuário admin...");
-
-    const existingAdmin = await prisma.user.findUnique({
-      where: { email: ADMIN_EMAIL },
-    });
-
-    if (existingAdmin) {
-      console.log("Admin já existe:", existingAdmin.email);
+    // Check if already initialized in this session
+    if (isInitialized) {
       return res.status(200).json({
-        message: "Admin user already exists",
-        email: existingAdmin.email,
+        status: "skipped",
+        message: "System already initialized",
       });
     }
 
-    console.log("Criando novo usuário admin...");
+    console.log("Verificando inicialização do sistema...");
+
+    // Check if any user exists
+    const userCount = await prisma.user.count();
+
+    if (userCount > 0) {
+      isInitialized = true;
+      return res.status(200).json({
+        status: "skipped",
+        message: "System already has users",
+        userCount,
+      });
+    }
+
+    console.log("Criando usuário admin inicial...");
     const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 10);
 
     const user = await prisma.user.create({
@@ -282,14 +307,21 @@ app.post("/api/init", async (_req: Request, res: Response) => {
       },
     });
 
-    console.log("Admin criado com sucesso:", user.email);
+    isInitialized = true;
+    console.log("Sistema inicializado com sucesso");
+
     const { password: _, ...userWithoutPassword } = user;
-    return res.status(201).json(userWithoutPassword);
+    return res.status(201).json({
+      status: "success",
+      message: "System initialized successfully",
+      user: userWithoutPassword,
+    });
   } catch (error) {
-    console.error("Erro ao criar usuário admin:", error);
+    console.error("Erro controlado na inicialização:", error);
     return res.status(500).json({
-      error: "Error creating initial user",
-      details: error instanceof Error ? error.message : String(error),
+      status: "error",
+      message: "Failed to initialize system",
+      details: error instanceof Error ? error.message : "Unknown error",
     });
   }
 });

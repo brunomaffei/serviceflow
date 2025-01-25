@@ -11,8 +11,23 @@ export function Login() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Apenas inicializa o admin
-    apiClient.initializeAdmin().catch(console.error);
+    const initSystem = async () => {
+      try {
+        const result = await apiClient.initializeAdmin();
+        if (result.status === "success") {
+          console.log("System initialized successfully");
+        } else if (result.status === "skipped") {
+          console.log("System already initialized");
+        } else {
+          console.log("Initialization status:", result.status);
+        }
+      } catch (error) {
+        // Silently handle initialization errors
+        console.warn("Initialization warning:", error);
+      }
+    };
+
+    initSystem();
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {

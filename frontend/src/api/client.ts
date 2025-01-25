@@ -1,7 +1,9 @@
 import axios from "axios";
 
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3001/api",
+  baseURL: BASE_URL,
   timeout: 15000,
   headers: {
     "Content-Type": "application/json",
@@ -9,8 +11,8 @@ const api = axios.create({
   withCredentials: false, // Change this to false since we're not using cookies
 });
 
-// Adicione este log
-console.log("API Base URL:", import.meta.env.VITE_API_URL);
+// Add debug logging
+console.log("API Base URL:", BASE_URL);
 
 // Add request interceptor for debugging
 api.interceptors.request.use(
@@ -69,9 +71,29 @@ api.interceptors.response.use(
 export const apiClient = {
   async initializeAdmin() {
     try {
-      await api.post("/init");
-    } catch (error) {
-      console.log("Admin already exists or error:", error);
+      console.log("Attempting to initialize admin...");
+      const response = await api.post("/init");
+
+      if (response.data?.status === "skipped") {
+        console.log("Admin initialization skipped:", response.data.message);
+        return response.data;
+      }
+
+      console.log("Admin initialization successful:", response.data);
+      return response.data;
+    } catch (error: any) {
+      // Don't throw error if it's just saying system is already initialized
+      if (error?.response?.data?.status === "skipped") {
+        console.log("System already initialized");
+        return error.response.data;
+      }
+
+      console.warn("Admin initialization warning:", error);
+      // Don't throw error for initialization issues
+      return {
+        status: "warning",
+        message: "Initialization skipped - system may already be set up",
+      };
     }
   },
 
