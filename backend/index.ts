@@ -249,18 +249,35 @@ let isInitialized = false;
 // Adicionar rota para criar usuário inicial
 app.post("/api/init", async (_req: Request, res: Response) => {
   try {
+    console.log("Starting system initialization...");
+
     // Check if already initialized in this session
     if (isInitialized) {
+      console.log("System already initialized in this session");
       return res.status(200).json({
         status: "skipped",
-        message: "System already initialized",
+        message: "System already initialized in this session",
       });
     }
 
-    console.log("Verificando inicialização do sistema...");
+    // Check database connection
+    try {
+      console.log("Testing database connection...");
+      await prisma.$connect();
+      console.log("Database connection successful");
+    } catch (dbError) {
+      console.error("Database connection failed:", dbError);
+      return res.status(500).json({
+        status: "error",
+        message: "Database connection failed",
+        details: dbError instanceof Error ? dbError.message : String(dbError),
+      });
+    }
 
     // Check if any user exists
+    console.log("Checking for existing users...");
     const userCount = await prisma.user.count();
+    console.log(`Found ${userCount} existing users`);
 
     if (userCount > 0) {
       isInitialized = true;
@@ -271,31 +288,36 @@ app.post("/api/init", async (_req: Request, res: Response) => {
       });
     }
 
-    console.log("Criando usuário admin inicial...");
+    // Create initial admin user
+    console.log("Creating initial admin user...");
     const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 10);
 
-    const user = await prisma.user.create({
-      data: {
-        email: ADMIN_EMAIL,
-        password: hashedPassword,
-        role: "ADMIN", // Corrigir o campo role para ADMIN
-        companyInfo: {
-          create: {
-            name: "Mecânica Rocha",
-            cnpj: "41.008.040/0001-67",
-            address: "Rua Eliazar Braga o-416 - CENTRO",
-            phone: "(14) 99650-2602",
-            email: "mecanicarocha21@gmail.com",
-          },
+    const adminData = {
+      email: ADMIN_EMAIL,
+      password: hashedPassword,
+      role: "ADMIN",
+      companyInfo: {
+        create: {
+          name: "Mecânica Rocha",
+          cnpj: "41.008.040/0001-67",
+          address: "Rua Eliazar Braga o-416 - CENTRO",
+          phone: "(14) 99650-2602",
+          email: "mecanicarocha21@gmail.com",
         },
       },
+    };
+
+    console.log("Admin data prepared:", { ...adminData, password: "[HIDDEN]" });
+
+    const user = await prisma.user.create({
+      data: adminData,
       include: {
         companyInfo: true,
       },
     });
 
     isInitialized = true;
-    console.log("Sistema inicializado com sucesso");
+    console.log("Admin user created successfully:", user.id);
 
     const { password: _, ...userWithoutPassword } = user;
     return res.status(201).json({
@@ -304,11 +326,19 @@ app.post("/api/init", async (_req: Request, res: Response) => {
       user: userWithoutPassword,
     });
   } catch (error) {
-    console.error("Erro controlado na inicialização:", error);
+    console.error("Initialization error:", {
+      error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : "No stack trace",
+    });
+
+    // Reset initialization flag on error
+    isInitialized = false;
+
     return res.status(500).json({
       status: "error",
       message: "Failed to initialize system",
-      details: error instanceof Error ? error.message : "Unknown error",
+      details: error instanceof Error ? error.message : String(error),
     });
   }
 });
