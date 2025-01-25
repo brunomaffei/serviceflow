@@ -10,9 +10,10 @@
     "start": "node dist/index.js",
     "build": "tsc",
     "dev": "ts-node --files index.ts",
-    "vercel-build": "prisma generate && tsc",
+    "vercel-build": "prisma generate && tsc && cp prisma/schema.prisma dist/",
     "postinstall": "prisma generate"
   },
+  "main": "dist/index.js",
   "dependencies": {
     "@prisma/client": "^6.2.1",
     "bcryptjs": "^2.4.3",
