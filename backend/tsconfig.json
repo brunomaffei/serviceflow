@@ -1,28 +1,12 @@
 {
   "compilerOptions": {
-    "typeRoots": ["./node_modules/@types", "./types"], // Certifique-se de ter o arquivo types/express.d.ts
-    "target": "ES2020", // Atualizei para ES2020 para maior compatibilidade
-    "module": "CommonJS",
-    "lib": ["ES2020"], // Simplifiquei para ES2020
+    "outDir": "./dist",
+    "module": "commonjs",
+    "target": "ES2021",
     "strict": true,
-    "strictNullChecks": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "outDir": "dist",
-    "rootDir": ".",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "baseUrl": ".",
-    "paths": {
-      "*": ["node_modules/*"]
-    }
+    "skipLibCheck": true
   },
-  "include": [
-    "index.ts",
-    "types/**/*.d.ts", // Garante que os tipos personalizados sejam incluídos
-    "prisma/**/*.ts"
-  ],
-  "exclude": ["node_modules", "dist"] // Exclui também a pasta de build
+  "include": ["./**/*"],
+  "exclude": ["node_modules", "dist"]
 }
