@@ -186,14 +186,8 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
 
     const user = await prisma.user.findUnique({
       where: { email },
-      select: {
-        id: true,
-        email: true,
-        password: true,
-        role: true, // Add role field
+      include: {
         companyInfo: true,
-        createdAt: true,
-        updatedAt: true,
       },
     });
 
@@ -220,19 +214,7 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
     console.log("Login successful for:", email);
     return res.json(userWithoutPassword);
   } catch (error) {
-    console.error("=== LOGIN ERROR ===");
-    console.error(
-      "Type:",
-      error instanceof Error ? error.constructor.name : typeof error
-    );
-    console.error(
-      "Message:",
-      error instanceof Error ? error.message : String(error)
-    );
-    console.error(
-      "Stack:",
-      error instanceof Error ? error.stack : "No stack trace"
-    );
+    console.error("=== LOGIN ERROR ===", error);
     return res.status(500).json({
       error: "Internal server error",
       details: error instanceof Error ? error.message : String(error),
