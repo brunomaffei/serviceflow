@@ -1,24 +1,17 @@
-import bcrypt from "bcryptjs";
-import { prisma } from "../../lib/prisma";
+const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 export const api = {
   // Autenticação
   async login(email: string, password: string) {
     try {
-      const user = await prisma.user.findUnique({
-        where: { email },
-        include: {
-          companyInfo: true,
-        },
+      const response = await fetch(`${baseURL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (!user) return null;
-
-      const isValid = await bcrypt.compare(password, user.password);
-      if (!isValid) return null;
-
-      const { password: _, ...userWithoutPassword } = user;
-      return userWithoutPassword;
+      if (!response.ok) return null;
+      return await response.json();
     } catch (error) {
       console.error("Login error:", error);
       throw new Error("Erro ao realizar login");
@@ -27,198 +20,58 @@ export const api = {
 
   // Usuários
   async createUser(data: any) {
-    const hashedPassword = await bcrypt.hash(data.password, 10);
-    return await prisma.user.create({
-      data: {
-        ...data,
-        password: hashedPassword,
-      },
-      include: {
-        companyInfo: true,
-      },
+    const response = await fetch(`${baseURL}/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
     });
+    return response.json();
   },
 
   async updateUser(id: string, data: any) {
-    return await prisma.user.update({
-      where: { id },
-      data,
-      include: {
-        companyInfo: true,
-      },
+    const response = await fetch(`${baseURL}/users/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
     });
-  },
-
-  async createInitialUser() {
-    const existingAdmin = await prisma.user.findUnique({
-      where: { email: "admin@example.com" },
-    });
-
-    if (!existingAdmin) {
-      const hashedPassword = await bcrypt.hash("admin123", 10);
-
-      const user = await prisma.user.create({
-        data: {
-          email: "admin@example.com",
-          password: hashedPassword,
-          companyInfo: {
-            create: {
-              name: "Mecânica Rocha",
-              cnpj: "41.008.040/0001-67",
-              address: "Rua Eliazar Braga o-416 - CENTRO",
-              phone: "(14) 99650-2602",
-              email: "mecanicarocha21@gmail.com",
-            },
-          },
-        },
-        include: {
-          companyInfo: true,
-        },
-      });
-
-      console.log("Admin user created:", user);
-    }
-  },
-
-  // Informações da Empresa
-  async updateCompanyInfo(userId: string, data: any) {
-    return await prisma.companyInfo.upsert({
-      where: {
-        userId,
-      },
-      update: data,
-      create: {
-        ...(data as any),
-        user: {
-          connect: { id: userId },
-        },
-      },
-    });
+    return response.json();
   },
 
   // Ordens de Serviço
-  async createServiceOrder(data: {
-    date: Date;
-    client: string;
-    fleet: string;
-    farm?: string;
-    description?: string;
-    total: number;
-    userId: string;
-    items: Array<{
-      description: string;
-      unitPrice: number;
-      quantity: number;
-    }>;
-  }) {
-    return await prisma.serviceOrder.create({
-      data: {
-        date: data.date,
-        client: data.client,
-        fleet: data.fleet,
-        farm: data.farm,
-        description: data.description,
-        total: data.total,
-        userId: data.userId,
-        items: {
-          create: data.items.map((item) => ({
-            description: item.description,
-            unitPrice: item.unitPrice,
-            quantity: item.quantity,
-            total: item.unitPrice * item.quantity,
-          })),
-        },
-      },
-      include: {
-        items: true,
-        user: {
-          include: {
-            companyInfo: true,
-          },
-        },
-      },
+  async createServiceOrder(data: any) {
+    const response = await fetch(`${baseURL}/service-orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
     });
+    return response.json();
   },
 
   async getServiceOrders(userId: string) {
-    return await prisma.serviceOrder.findMany({
-      where: {
-        userId,
-      },
-      include: {
-        items: true,
-        user: {
-          include: {
-            companyInfo: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const response = await fetch(`${baseURL}/service-orders?userId=${userId}`);
+    return response.json();
   },
 
   async getServiceOrder(id: string) {
-    return await prisma.serviceOrder.findUnique({
-      where: { id },
-      include: {
-        items: true,
-        user: {
-          include: {
-            companyInfo: true,
-          },
-        },
-      },
-    });
+    const response = await fetch(`${baseURL}/service-orders/${id}`);
+    return response.json();
   },
 
   async updateServiceOrderStatus(
     id: string,
     status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED"
   ) {
-    return await prisma.serviceOrder.update({
-      where: { id },
-      data: { status },
-      include: {
-        items: true,
-      },
+    const response = await fetch(`${baseURL}/service-orders/${id}/status`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
     });
+    return response.json();
   },
 
   // Dashboard Statistics
   async getDashboardStats(userId: string) {
-    const [totalOrders, monthlyOrders, totalRevenue] = await Promise.all([
-      prisma.serviceOrder.count({
-        where: { userId },
-      }),
-      prisma.serviceOrder.count({
-        where: {
-          userId,
-          date: {
-            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-          },
-        },
-      }),
-      prisma.serviceOrder.aggregate({
-        where: { userId },
-        _sum: {
-          total: true,
-        },
-      }),
-    ]);
-
-    const uniqueClients = await prisma.serviceOrder.findMany({
-      where: { userId },
-      select: { client: true },
-      distinct: ["client"],
-    });
-
-    return {
-      totalOrders,
-      totalClientsServed: uniqueClients.length,
-      monthlyOrders,
-      totalRevenue: totalRevenue._sum.total ?? 0,
-    };
+    const response = await fetch(`${baseURL}/dashboard/stats?userId=${userId}`);
+    return response.json();
   },
 };
