@@ -34,18 +34,19 @@ const checkDatabaseConnection = async () => {
   }
 };
 
+// Add this after your imports
+const isProduction = process.env.NODE_ENV === "production";
+console.log(`Running in ${isProduction ? "production" : "development"} mode`);
+
 // Configuração do CORS atualizada
 app.use(
   cors({
-    origin: [
-      // Local development
-      "http://localhost:5173",
-      "http://localhost:3001",
-      // Production URLs
-      "https://serviceflow-9t5a.vercel.app",
-      // Vercel preview deployments (using wildcard)
-      "https://serviceflow-*.vercel.app",
-    ],
+    origin: isProduction
+      ? [
+          "https://serviceflow-9t5a.vercel.app",
+          "https://serviceflow-*.vercel.app",
+        ]
+      : ["http://localhost:5173", "http://localhost:3001"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "admin-id"],
     credentials: false,
