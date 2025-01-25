@@ -38,18 +38,34 @@ const checkDatabaseConnection = async () => {
 const isProduction = process.env.NODE_ENV === "production";
 console.log(`Running in ${isProduction ? "production" : "development"} mode`);
 
-// Configuração do CORS atualizada
+const allowedOrigins = isProduction
+  ? [
+      process.env.FRONTEND_URL, // Add this to your Vercel environment variables
+      "https://serviceflow-*.vercel.app",
+    ].filter(Boolean)
+  : ["http://localhost:5173", "http://localhost:3001"];
+
 app.use(
   cors({
-    origin: isProduction
-      ? [
-          "https://serviceflow-9t5a.vercel.app",
-          "https://serviceflow-*.vercel.app",
-        ]
-      : ["http://localhost:5173", "http://localhost:3001"],
+    origin: (origin, callback) => {
+      if (
+        !origin ||
+        allowedOrigins.some(
+          (allowed) =>
+            origin === allowed ||
+            (typeof allowed === "string" &&
+              allowed.includes("*") &&
+              origin.match(allowed.replace("*", ".*")))
+        )
+      ) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "admin-id"],
-    credentials: false,
+    credentials: true,
   })
 );
 
@@ -822,8 +838,7 @@ const startServer = async () => {
       );
     });
   } catch (error) {
-    console.error("Failed to start server:", error);
-    process.exit(1);
+    console.error("Erro ao iniciar o servidor:", error);
   }
 };
 

@@ -21,16 +21,46 @@ const cors_1 = __importDefault(require("cors"));
 const express_1 = __importDefault(require("express"));
 const client_1 = require("./prisma/client");
 const app = (0, express_1.default)();
+// Add this near the top of the file after imports
+const checkDatabaseConnection = async () => {
+    try {
+        await client_1.prisma.$connect();
+        console.log("✅ Database connection successful");
+    }
+    catch (error) {
+        console.error("❌ Database connection failed:", error);
+        throw error;
+    }
+};
+// Add this after your imports
+const isProduction = process.env.NODE_ENV === "production";
+console.log(`Running in ${isProduction ? "production" : "development"} mode`);
 // Configuração do CORS atualizada
 app.use((0, cors_1.default)({
-    origin: [
-        "https://serviceflow-r5m9.vercel.app", // seu frontend em produção
-        "http://localhost:5173", // seu frontend local
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
+    origin: isProduction
+        ? [
+            "https://serviceflow-9t5a.vercel.app",
+            "https://serviceflow-*.vercel.app",
+        ]
+        : ["http://localhost:5173", "http://localhost:3001"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization", "admin-id"],
+    credentials: false,
 }));
+// Add this middleware after your CORS configuration
+app.use(async (req, res, next) => {
+    try {
+        await client_1.prisma.$connect();
+        next();
+    }
+    catch (error) {
+        console.error("Database connection error:", error);
+        return res.status(500).json({
+            error: "Database connection failed",
+            details: error instanceof Error ? error.message : String(error),
+        });
+    }
+});
 // Middleware para logging de requisições
 app.use((req, res, next) => {
     console.log(`${req.method} ${req.url}`);
@@ -39,7 +69,6 @@ app.use((req, res, next) => {
 });
 app.use(express_1.default.json());
 // Adicione um endpoint de teste CORS
-app.options("*", (0, cors_1.default)()); // habilita pre-flight para todas as rotas
 app.get("/api/test-cors", (req, res) => {
     res.json({ message: "CORS está funcionando!" });
 });
@@ -67,7 +96,6 @@ app.get("/api/healthcheck", async (_req, res) => {
 app.get("/api/company-info/:userId", async (req, res) => {
     try {
         const { userId } = req.params;
-        console.log("Fetching company info for userId:", userId);
         const user = await client_1.prisma.user.findUnique({
             where: { id: userId },
             include: { companyInfo: true },
@@ -105,20 +133,60 @@ app.get("/api/health", (_req, res) => {
 });
 // Auth routes
 app.post("/api/auth/login", async (req, res) => {
+    var _a;
     try {
         const { email, password } = req.body;
+        console.log("=== LOGIN ATTEMPT ===");
+        console.log("Environment:", process.env.NODE_ENV);
+        console.log("Database URL:", ((_a = process.env.DATABASE_URL) === null || _a === void 0 ? void 0 : _a.slice(0, 20)) + "...");
+        console.log("Email:", email);
+        // Test database connection
+        try {
+            await client_1.prisma.$connect();
+            console.log("✅ Database connected");
+            // Test query
+            const userCount = await client_1.prisma.user.count();
+            console.log("Total users in DB:", userCount);
+        }
+        catch (dbError) {
+            console.error("❌ Database connection failed:", dbError);
+            return res.status(500).json({
+                error: "Database connection failed",
+                details: dbError instanceof Error ? dbError.message : String(dbError),
+            });
+        }
         const user = await client_1.prisma.user.findUnique({
             where: { email },
-            include: { companyInfo: true },
+            select: {
+                id: true,
+                email: true,
+                password: true,
+                companyInfo: true,
+                // Remove role field if it's not in schema
+            },
         });
-        if (!user || !(await bcryptjs_1.default.compare(password, user.password))) {
-            return res.status(401).json({ error: "Credenciais inválidas" });
+        console.log("User found:", user ? "Yes" : "No");
+        if (!user) {
+            return res.status(401).json({ error: "User not found" });
+        }
+        const isValidPassword = await bcryptjs_1.default.compare(password, user.password);
+        console.log("Password valid:", isValidPassword);
+        if (!isValidPassword) {
+            return res.status(401).json({ error: "Invalid password" });
         }
         const { password: _ } = user, userWithoutPassword = __rest(user, ["password"]);
-        res.json(userWithoutPassword);
+        console.log("Login successful for:", email);
+        return res.json(userWithoutPassword);
     }
     catch (error) {
-        res.status(500).json({ error: "Erro interno do servidor" });
+        console.error("=== LOGIN ERROR ===");
+        console.error("Type:", error instanceof Error ? error.constructor.name : typeof error);
+        console.error("Message:", error instanceof Error ? error.message : String(error));
+        console.error("Stack:", error instanceof Error ? error.stack : "No stack trace");
+        return res.status(500).json({
+            error: "Internal server error",
+            details: error instanceof Error ? error.message : String(error),
+        });
     }
 });
 const ADMIN_EMAIL = "admin@admin.com.br";
@@ -126,37 +194,48 @@ const ADMIN_PASSWORD = "123";
 // Adicionar rota para criar usuário inicial
 app.post("/api/init", async (_req, res) => {
     try {
+        console.log("Iniciando criação do usuário admin...");
         const existingAdmin = await client_1.prisma.user.findUnique({
             where: { email: ADMIN_EMAIL },
         });
-        if (!existingAdmin) {
-            const hashedPassword = await bcryptjs_1.default.hash(ADMIN_PASSWORD, 10);
-            const user = await client_1.prisma.user.create({
-                data: {
-                    email: ADMIN_EMAIL,
-                    password: hashedPassword,
-                    companyInfo: {
-                        create: {
-                            name: "Mecânica Rocha",
-                            cnpj: "41.008.040/0001-67",
-                            address: "Rua Eliazar Braga o-416 - CENTRO",
-                            phone: "(14) 99650-2602",
-                            email: "mecanicarocha21@gmail.com",
-                        },
+        if (existingAdmin) {
+            console.log("Admin já existe:", existingAdmin.email);
+            return res.status(200).json({
+                message: "Admin user already exists",
+                email: existingAdmin.email,
+            });
+        }
+        console.log("Criando novo usuário admin...");
+        const hashedPassword = await bcryptjs_1.default.hash(ADMIN_PASSWORD, 10);
+        const user = await client_1.prisma.user.create({
+            data: {
+                email: ADMIN_EMAIL,
+                password: hashedPassword,
+                role: "ADMIN", // Corrigir o campo role para ADMIN
+                companyInfo: {
+                    create: {
+                        name: "Mecânica Rocha",
+                        cnpj: "41.008.040/0001-67",
+                        address: "Rua Eliazar Braga o-416 - CENTRO",
+                        phone: "(14) 99650-2602",
+                        email: "mecanicarocha21@gmail.com",
                     },
                 },
-                include: {
-                    companyInfo: true,
-                },
-            });
-            res.json(user);
-        }
-        else {
-            res.json({ message: "Admin user already exists" });
-        }
+            },
+            include: {
+                companyInfo: true,
+            },
+        });
+        console.log("Admin criado com sucesso:", user.email);
+        const { password: _ } = user, userWithoutPassword = __rest(user, ["password"]);
+        return res.status(201).json(userWithoutPassword);
     }
     catch (error) {
-        res.status(500).json({ error: "Error creating initial user" });
+        console.error("Erro ao criar usuário admin:", error);
+        return res.status(500).json({
+            error: "Error creating initial user",
+            details: error instanceof Error ? error.message : String(error),
+        });
     }
 });
 // Service Orders routes
@@ -232,6 +311,58 @@ app.get("/api/service-orders", async (req, res) => {
         res.status(500).json({ error: "Erro ao buscar ordens de serviço" });
     }
 });
+app.put("/api/service-orders/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const _a = req.body, { items } = _a, orderData = __rest(_a, ["items"]);
+        // Primeiro, atualizar a ordem
+        const updatedOrder = await client_1.prisma.serviceOrder.update({
+            where: { id },
+            data: {
+                client: orderData.client,
+                date: new Date(orderData.date),
+                fleet: orderData.fleet,
+                farm: orderData.farm || "",
+                description: orderData.description || "",
+                total: Number(orderData.total),
+            },
+        });
+        // Depois, deletar os itens existentes
+        await client_1.prisma.serviceItem.deleteMany({
+            where: { orderId: id },
+        });
+        // Por fim, criar os novos itens
+        const newItems = await client_1.prisma.serviceItem.createMany({
+            data: items.map((item) => ({
+                quantity: Number(item.quantity),
+                description: item.description,
+                unitPrice: Number(item.unitPrice),
+                total: Number(item.total),
+                orderId: id,
+            })),
+        });
+        // Buscar a ordem atualizada com os novos itens
+        const orderWithItems = await client_1.prisma.serviceOrder.findUnique({
+            where: { id },
+            include: {
+                items: true,
+                user: {
+                    include: {
+                        companyInfo: true,
+                    },
+                },
+            },
+        });
+        res.json(orderWithItems);
+    }
+    catch (error) {
+        console.error("Erro ao atualizar ordem de serviço:", error);
+        res.status(500).json({
+            error: "Erro ao atualizar ordem de serviço",
+            details: error instanceof Error ? error.message : String(error),
+        });
+    }
+});
 app.delete("/api/service-orders/:id", async (req, res) => {
     try {
         const { id } = req.params;
@@ -268,28 +399,63 @@ app.post("/api/products", async (req, res) => {
 });
 app.get("/api/products", async (_req, res) => {
     try {
+        // First check if Prisma is connected
+        if (!client_1.prisma) {
+            console.error("Prisma client is not initialized");
+            return res.status(500).json({
+                error: "Database client not initialized",
+                details: "Internal server configuration error",
+            });
+        }
+        console.log("Checking database connection...");
+        await client_1.prisma.$connect();
+        console.log("Database connected, fetching products...");
         const products = await client_1.prisma.product.findMany({
             orderBy: { createdAt: "desc" },
         });
-        res.json(products);
+        console.log(`Found ${products.length} products`);
+        return res.json(products);
     }
     catch (error) {
-        console.error("Error fetching products:", error);
-        res.status(500).json({ error: "Error fetching products" });
+        console.error("Products route error:", {
+            name: error.name,
+            message: error.message,
+            code: error.code,
+            stack: error.stack,
+        });
+        if (error.code === "P2021") {
+            return res.status(500).json({
+                error: "Database table not found",
+                details: "The products table might not exist. Run prisma migrate",
+            });
+        }
+        return res.status(500).json({
+            error: "Failed to fetch products",
+            details: error.message,
+        });
     }
 });
 app.put("/api/products/:id", async (req, res) => {
     try {
         const { id } = req.params;
+        const { name, price, quantity, unit } = req.body;
         const product = await client_1.prisma.product.update({
             where: { id },
-            data: req.body,
+            data: {
+                name: String(name),
+                price: Number(price),
+                quantity: Math.round(Number(quantity)), // Ensure integer
+                unit: unit, // Ensure correct enum type
+            },
         });
         res.json(product);
     }
     catch (error) {
         console.error("Error updating product:", error);
-        res.status(500).json({ error: "Error updating product" });
+        res.status(500).json({
+            error: "Error updating product",
+            details: error instanceof Error ? error.message : String(error),
+        });
     }
 });
 app.delete("/api/products/:id", async (req, res) => {
@@ -303,6 +469,113 @@ app.delete("/api/products/:id", async (req, res) => {
     catch (error) {
         console.error("Error deleting product:", error);
         res.status(500).json({ error: "Error deleting product" });
+    }
+});
+app.post("/api/clients", async (req, res) => {
+    try {
+        const clientData = req.body;
+        // Detailed validation
+        const requiredFields = ["type", "name", "document", "userId"];
+        const missingFields = requiredFields.filter((field) => !clientData[field]);
+        if (missingFields.length > 0) {
+            return res.status(400).json({
+                error: "Missing required fields",
+                missingFields,
+                received: clientData,
+            });
+        }
+        // Validate user exists
+        const userExists = await client_1.prisma.user.findUnique({
+            where: { id: String(clientData.userId) },
+        });
+        if (!userExists) {
+            return res.status(400).json({
+                error: "Invalid userId",
+                details: "The specified user does not exist",
+                receivedUserId: clientData.userId,
+            });
+        }
+        // Validate client type
+        if (!["PF", "PJ"].includes(clientData.type)) {
+            return res.status(400).json({
+                error: "Invalid client type",
+                details: "Type must be either 'PF' or 'PJ'",
+                receivedType: clientData.type,
+            });
+        }
+        // Create client with validated data
+        const client = await client_1.prisma.client.create({
+            data: {
+                type: String(clientData.type),
+                name: String(clientData.name),
+                document: String(clientData.document),
+                email: clientData.email || null,
+                phone: clientData.phone || null,
+                address: clientData.address || null,
+                city: clientData.city || null,
+                state: clientData.state || null,
+                companyName: clientData.companyName || null,
+                tradingName: clientData.tradingName || null,
+                stateRegistration: clientData.stateRegistration || null,
+                userId: String(clientData.userId),
+            },
+        });
+        res.json(client);
+    }
+    catch (error) {
+        console.error("Detailed error creating client:", error);
+        res.status(500).json({
+            error: "Error creating client",
+            details: error instanceof Error ? error.message : String(error),
+        });
+    }
+});
+app.get("/api/clients", async (req, res) => {
+    try {
+        const { userId } = req.query;
+        if (!userId) {
+            return res.status(400).json({ error: "UserId is required" });
+        }
+        const clients = await client_1.prisma.client.findMany({
+            where: { userId: String(userId) },
+            orderBy: { createdAt: "desc" },
+        });
+        res.json(clients);
+    }
+    catch (error) {
+        console.error("Error fetching clients:", error);
+        res.status(500).json({ error: "Error fetching clients" });
+    }
+});
+app.put("/api/clients/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const clientData = req.body;
+        const client = await client_1.prisma.client.update({
+            where: { id },
+            data: clientData,
+        });
+        res.json(client);
+    }
+    catch (error) {
+        console.error("Error updating client:", error);
+        res.status(500).json({
+            error: "Error updating client",
+            details: error instanceof Error ? error.message : String(error),
+        });
+    }
+});
+app.delete("/api/clients/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        await client_1.prisma.client.delete({
+            where: { id },
+        });
+        res.json({ message: "Client deleted successfully" });
+    }
+    catch (error) {
+        console.error("Error deleting client:", error);
+        res.status(500).json({ error: "Error deleting client" });
     }
 });
 // Dashboard routes
@@ -323,6 +596,123 @@ app.get("/api/dashboard/stats", async (req, res) => {
     }
     catch (error) {
         res.status(500).json({ error: "Erro ao buscar estatísticas" });
+    }
+});
+// New endpoint for creating users (admin only)
+app.post("/api/users", async (req, res) => {
+    try {
+        const { email, password, role } = req.body;
+        const adminId = req.headers["admin-id"]; // Add this header when making requests
+        // Check if creator is admin
+        const admin = await client_1.prisma.user.findUnique({
+            where: { id: String(adminId) },
+        });
+        if (!admin || admin.role !== "ADMIN") {
+            return res.status(403).json({ error: "Only admins can create users" });
+        }
+        const hashedPassword = await bcryptjs_1.default.hash(password, 10);
+        const user = await client_1.prisma.user.create({
+            data: {
+                email,
+                password: hashedPassword,
+                role: role || "USER",
+            },
+        });
+        const { password: _ } = user, userWithoutPassword = __rest(user, ["password"]);
+        res.json(userWithoutPassword);
+    }
+    catch (error) {
+        res.status(500).json({ error: "Error creating user" });
+    }
+});
+// Get all users (admin only)
+app.get("/api/users", async (req, res) => {
+    try {
+        const adminId = req.headers["admin-id"];
+        console.log("Requisição /users:", {
+            adminId,
+            headers: req.headers,
+            method: req.method,
+        });
+        if (!adminId) {
+            return res.status(403).json({
+                error: "Admin ID não fornecido",
+                details: "O header admin-id é obrigatório",
+            });
+        }
+        // Busca o usuário e inclui logs detalhados
+        const admin = await client_1.prisma.user.findUnique({
+            where: { id: String(adminId) },
+            select: { id: true, email: true, role: true },
+        });
+        console.log("Usuário encontrado:", admin);
+        if (!admin) {
+            return res.status(403).json({
+                error: "Usuário não encontrado",
+                adminId,
+            });
+        }
+        // Verifica o role
+        if (admin.role !== "ADMIN") {
+            return res.status(403).json({
+                error: "Only admins can list users",
+                currentRole: admin.role,
+            });
+        }
+        const users = await client_1.prisma.user.findMany({
+            select: {
+                id: true,
+                email: true,
+                role: true,
+                createdAt: true,
+            },
+        });
+        return res.json(users);
+    }
+    catch (error) {
+        console.error("Erro em /users:", error);
+        return res.status(500).json({
+            error: "Erro ao buscar usuários",
+            details: error instanceof Error ? error.message : String(error),
+        });
+    }
+});
+// User management routes
+app.post("/api/users", async (req, res) => {
+    try {
+        const { email, password, role } = req.body;
+        const adminId = req.headers["admin-id"];
+        // Verificar se o usuário é admin
+        const admin = await client_1.prisma.user.findUnique({
+            where: { id: String(adminId) },
+        });
+        if (!admin || admin.role !== "ADMIN") {
+            return res
+                .status(403)
+                .json({ error: "Apenas administradores podem criar usuários" });
+        }
+        // Verificar se o email já existe
+        const existingUser = await client_1.prisma.user.findUnique({
+            where: { email },
+        });
+        if (existingUser) {
+            return res.status(400).json({ error: "Email já está em uso" });
+        }
+        // Criar novo usuário
+        const hashedPassword = await bcryptjs_1.default.hash(password, 10);
+        const newUser = await client_1.prisma.user.create({
+            data: {
+                email,
+                password: hashedPassword,
+                role: role || "USER",
+            },
+        });
+        const { password: _ } = newUser, userWithoutPassword = __rest(newUser, ["password"]);
+        res.status(201).json(userWithoutPassword);
+    }
+    catch (error) {
+        console.error("Error creating user:", error);
+        res.status(500).json({ error: "Erro ao criar usuário" });
     }
 });
 // Melhor tratamento de erros
