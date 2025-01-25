@@ -182,28 +182,7 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
     console.log("=== LOGIN ATTEMPT ===");
-    console.log("Environment:", process.env.NODE_ENV);
-    console.log(
-      "Database URL:",
-      process.env.DATABASE_URL?.slice(0, 20) + "..."
-    );
     console.log("Email:", email);
-
-    // Test database connection
-    try {
-      await prisma.$connect();
-      console.log("✅ Database connected");
-
-      // Test query
-      const userCount = await prisma.user.count();
-      console.log("Total users in DB:", userCount);
-    } catch (dbError) {
-      console.error("❌ Database connection failed:", dbError);
-      return res.status(500).json({
-        error: "Database connection failed",
-        details: dbError instanceof Error ? dbError.message : String(dbError),
-      });
-    }
 
     const user = await prisma.user.findUnique({
       where: { email },
@@ -211,22 +190,30 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
         id: true,
         email: true,
         password: true,
+        role: true, // Add role field
         companyInfo: true,
-        // Remove role field if it's not in schema
+        createdAt: true,
+        updatedAt: true,
       },
     });
 
     console.log("User found:", user ? "Yes" : "No");
 
     if (!user) {
-      return res.status(401).json({ error: "User not found" });
+      return res.status(401).json({
+        error: "User not found",
+        details: "No user found with this email",
+      });
     }
 
     const isValidPassword = await bcrypt.compare(password, user.password);
     console.log("Password valid:", isValidPassword);
 
     if (!isValidPassword) {
-      return res.status(401).json({ error: "Invalid password" });
+      return res.status(401).json({
+        error: "Invalid password",
+        details: "The password provided is incorrect",
+      });
     }
 
     const { password: _, ...userWithoutPassword } = user;

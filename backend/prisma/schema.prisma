@@ -1,106 +1,106 @@
 generator client {
-    provider = "prisma-client-js"
-    output   = "../node_modules/.prisma/client"
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-    id          String         @id @default(cuid())
-    email       String         @unique
-    password    String
-    role        String         @default("USER") // Add this line - can be "ADMIN" or "USER"
-    createdAt   DateTime       @default(now())
-    updatedAt   DateTime       @updatedAt
-    companyInfo CompanyInfo?
-    orders      ServiceOrder[]
-    clients     Client[]
+  id          String         @id @default(cuid())
+  email       String         @unique
+  password    String
+  role        String         @default("USER")
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  clients     Client[]
+  companyInfo CompanyInfo?
+  orders      ServiceOrder[]
 }
 
 model CompanyInfo {
-    id      String  @id @default(cuid())
-    name    String
-    cnpj    String
-    address String?
-    phone   String?
-    email   String?
-    userId  String  @unique
-    user    User    @relation(fields: [userId], references: [id])
+  id      String  @id @default(cuid())
+  name    String
+  cnpj    String
+  address String?
+  phone   String?
+  email   String?
+  userId  String  @unique
+  user    User    @relation(fields: [userId], references: [id])
 }
 
 model ServiceOrder {
-    id          String        @id @default(cuid())
-    date        DateTime
-    client      String
-    fleet       String
-    farm        String?
-    description String?
-    total       Float
-    status      OrderStatus   @default(PENDING)
-    userId      String
-    createdAt   DateTime      @default(now())
-    updatedAt   DateTime      @updatedAt
-    items       ServiceItem[]
-    user        User          @relation(fields: [userId], references: [id])
+  id          String        @id @default(cuid())
+  date        DateTime
+  client      String
+  fleet       String
+  farm        String?
+  description String?
+  total       Float
+  status      OrderStatus   @default(PENDING)
+  userId      String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  items       ServiceItem[]
+  user        User          @relation(fields: [userId], references: [id])
 }
 
 model ServiceItem {
-    id          String       @id @default(cuid())
-    quantity    Int
-    description String
-    unitPrice   Float
-    total       Float
-    orderId     String
-    order       ServiceOrder @relation(fields: [orderId], references: [id])
+  id          String       @id @default(cuid())
+  quantity    Int
+  description String
+  unitPrice   Float
+  total       Float
+  orderId     String
+  order       ServiceOrder @relation(fields: [orderId], references: [id])
 }
 
 model Product {
-    id        String   @id @default(cuid())
-    name      String
-    price     Float
-    quantity  Int
-    unit      Unit
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  price     Float
+  quantity  Int
+  unit      Unit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Client {
-    id                String   @id @default(cuid())
-    type              String // "PF" or "PJ"
-    name              String
-    document          String // CPF or CNPJ
-    email             String?
-    phone             String?
-    address           String?
-    city              String?
-    state             String?
-    companyName       String? // for PJ only
-    tradingName       String? // for PJ only
-    stateRegistration String? // for PJ only
-    createdAt         DateTime @default(now())
-    updatedAt         DateTime @updatedAt
-    userId            String
-    user              User     @relation(fields: [userId], references: [id])
+  id                String   @id @default(cuid())
+  type              String
+  name              String
+  document          String
+  email             String?
+  phone             String?
+  address           String?
+  city              String?
+  state             String?
+  companyName       String?
+  tradingName       String?
+  stateRegistration String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
 
-    @@index([userId])
+  @@index([userId])
 }
 
 enum Unit {
-    METERS
-    UNITS
+  METERS
+  UNITS
 }
 
 enum OrderStatus {
-    PENDING
-    IN_PROGRESS
-    COMPLETED
-    CANCELLED
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
 }
 
 enum ClientType {
-    PF
-    PJ
+  PF
+  PJ
 }
