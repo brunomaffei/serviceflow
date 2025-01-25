@@ -4,10 +4,10 @@ import { prisma } from "../lib/prisma";
 const router = Router();
 
 // Rotas de Produtos
-router.get("/products", async (req: Request, res: Response) => {
+router.get("/products", async (_req: Request, res: Response) => {
   try {
     const products = await prisma.product.findMany();
-    res.json(products);
+    res.status(200).json(products);
   } catch (error) {
     console.error("Error fetching products:", error);
     res.status(500).json({ error: "Failed to fetch products" });
@@ -17,11 +17,11 @@ router.get("/products", async (req: Request, res: Response) => {
 // Rotas de Clientes
 router.get("/clients", async (req: Request, res: Response) => {
   try {
-    const { userId } = req.query;
+    const userId = req.query.userId as string;
     const clients = await prisma.client.findMany({
-      where: { userId: userId as string },
+      where: { userId },
     });
-    res.json(clients);
+    res.status(200).json(clients);
   } catch (error) {
     console.error("Error fetching clients:", error);
     res.status(500).json({ error: "Error fetching clients" });
@@ -29,7 +29,7 @@ router.get("/clients", async (req: Request, res: Response) => {
 });
 
 // Rotas de Usuários
-router.get("/users", async (req: Request, res: Response) => {
+router.get("/users", async (_req: Request, res: Response) => {
   try {
     const users = await prisma.user.findMany({
       select: {
@@ -40,7 +40,7 @@ router.get("/users", async (req: Request, res: Response) => {
         companyInfo: true,
       },
     });
-    res.json(users);
+    res.status(200).json(users);
   } catch (error) {
     console.error("Error fetching users:", error);
     res.status(500).json({ error: "Erro ao buscar usuários" });
