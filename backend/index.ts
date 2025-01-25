@@ -38,10 +38,13 @@ const checkDatabaseConnection = async () => {
 app.use(
   cors({
     origin: [
+      // Local development
       "http://localhost:5173",
       "http://localhost:3001",
-      "https://serviceflow-9t5a.vercel.app", // Adicione o domínio do seu frontend na Vercel
-      "https://serviceflow-psi.vercel.app", // E do backend também
+      // Production URLs
+      "https://serviceflow-9t5a.vercel.app",
+      // Vercel preview deployments (using wildcard)
+      "https://serviceflow-*.vercel.app",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "admin-id"],
