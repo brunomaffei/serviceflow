@@ -21,7 +21,7 @@ function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
 
   // Simplificada: verifica apenas ID e role
   const isAuthenticated = !!currentUser?.id;
-  const hasPermission = allowedRoles.includes(currentUser?.role || "USER"); // default to USER
+  const hasPermission = allowedRoles.includes(currentUser?.role || "USER");
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -31,12 +31,10 @@ function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   }, [isAuthenticated, currentUser]);
 
   if (!isAuthenticated) {
-    console.log("Redirecionando para login: dados inválidos"); // Debug
     return <Navigate to="/login" replace />;
   }
 
   if (!hasPermission) {
-    console.log("Sem permissão necessária"); // Debug
     return <Navigate to="/dashboard" replace />;
   }
 

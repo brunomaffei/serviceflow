@@ -23,17 +23,6 @@ type Response = ExpressResponse & {
 
 const app = express();
 
-// Add this near the top of the file after imports
-const checkDatabaseConnection = async () => {
-  try {
-    await prisma.$connect();
-    console.log("✅ Database connection successful");
-  } catch (error) {
-    console.error("❌ Database connection failed:", error);
-    throw error;
-  }
-};
-
 // Add this after your imports
 const isProduction = process.env.NODE_ENV === "production";
 console.log(`Running in ${isProduction ? "production" : "development"} mode`);
