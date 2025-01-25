@@ -34,17 +34,23 @@ export function Products() {
   const loadProducts = async () => {
     setLoading(true);
     try {
+      console.log("Iniciando carregamento de produtos...");
       const data = await apiClient.getProducts();
-      if (Array.isArray(data)) {
-        setProducts(data);
-      } else {
-        setProducts([]);
-        toast.error("Formato de dados inválido");
+      setProducts(Array.isArray(data) ? data : []);
+
+      if (data.length === 0) {
+        toast.info("Nenhum produto encontrado");
       }
     } catch (error: any) {
-      console.error("Error loading products:", error);
+      console.error("Erro ao carregar produtos:", error);
       setProducts([]);
-      toast.error(error.message || "Erro ao carregar produtos");
+
+      // Mensagem mais amigável para o usuário
+      const errorMessage = error.message.includes("banco de dados")
+        ? "Erro de conexão com o servidor. Por favor, tente novamente em alguns minutos."
+        : error.message;
+
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

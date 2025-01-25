@@ -2,11 +2,15 @@ import axios from "axios";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:3001/api",
-  timeout: 15000, // Increased to 15 seconds
+  timeout: 15000,
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: false, // Change this to false since we're not using cookies
 });
+
+// Adicione este log
+console.log("API Base URL:", import.meta.env.VITE_API_URL);
 
 // Add request interceptor for debugging
 api.interceptors.request.use(
@@ -39,7 +43,7 @@ api.interceptors.response.use(
         // Retry the request once
         const retryConfig = {
           ...error.config,
-          timeout: 30000, // Increase timeout for retry
+          timeout: 30000,
         };
         return await api(retryConfig);
       } catch (retryError) {
@@ -88,7 +92,8 @@ export const apiClient = {
   async getServiceOrders(userId: string) {
     try {
       const { data } = await api.get(`/service-orders?userId=${userId}`, {
-        timeout: 30000, // Specific timeout for this endpoint
+        timeout: 30000,
+        withCredentials: false, // Desabilita temporariamente para teste
       });
       return Array.isArray(data) ? data : [];
     } catch (error) {
@@ -125,56 +130,42 @@ export const apiClient = {
   // Products methods
   async getProducts() {
     try {
+      console.log("Iniciando busca de produtos...");
       const response = await api.get("/products", {
-        validateStatus: function (status) {
-          return status < 500; // Consider only 500+ as errors
-        },
+        timeout: 30000, // Aumentado para 30s
       });
 
-      // Log full response for debugging
-      console.log("Products Response:", {
+      console.log("Resposta recebida:", {
         status: response.status,
-        headers: response.headers,
-        data: response.data,
+        dataLength: Array.isArray(response.data)
+          ? response.data.length
+          : "not an array",
       });
 
-      if (response.status === 401) {
-        throw new Error("Não autorizado. Por favor, faça login novamente.");
+      if (!response.data) {
+        throw new Error("Nenhum dado retornado do servidor");
       }
 
-      if (response.status === 403) {
-        throw new Error("Sem permissão para acessar produtos.");
-      }
-
-      if (response.status >= 400) {
-        throw new Error(response.data?.message || "Erro ao carregar produtos");
-      }
-
+      // Garantir que sempre retorne um array
       return Array.isArray(response.data) ? response.data : [];
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        console.error("Detailed error:", {
+        console.error("Erro detalhado:", {
           status: error.response?.status,
           data: error.response?.data,
-          headers: error.response?.headers,
-          config: error.config,
+          message: error.message,
         });
 
+        // Tratamento específico para erro 500
         if (error.response?.status === 500) {
-          throw new Error(
-            "Erro interno do servidor. Por favor, tente novamente mais tarde."
-          );
-        }
-
-        if (error.code === "ERR_NETWORK") {
-          throw new Error(
-            "Não foi possível conectar ao servidor. Verifique sua conexão."
-          );
+          const errorMessage =
+            error.response.data?.details ||
+            "Erro de conexão com o banco de dados. Tente novamente em alguns minutos.";
+          throw new Error(errorMessage);
         }
       }
-      throw new Error(
-        error instanceof Error ? error.message : "Erro ao carregar produtos"
-      );
+
+      throw new Error("Erro ao carregar produtos. Por favor, tente novamente.");
     }
   },
 
@@ -231,16 +222,37 @@ export const apiClient = {
   // User management methods
   async getUsers(adminId: string) {
     try {
+      if (!adminId) {
+        throw new Error("ID do administrador não fornecido");
+      }
+
+      const currentUser = JSON.parse(
+        localStorage.getItem("currentUser") || "{}"
+      );
+
+      if (currentUser.role !== "ADMIN") {
+        throw new Error("Apenas administradores podem acessar esta função");
+      }
+
       const { data } = await api.get("/users", {
         headers: {
           "admin-id": adminId,
           "Content-Type": "application/json",
         },
       });
-      return data;
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      throw error;
+
+      if (!data) {
+        throw new Error("Nenhum dado retornado");
+      }
+
+      return Array.isArray(data) ? data : [];
+    } catch (error: any) {
+      console.error("Erro ao buscar usuários:", {
+        error,
+        adminId,
+        response: error.response?.data,
+      });
+      throw new Error(error.response?.data?.error || "Erro ao buscar usuários");
     }
   },
 

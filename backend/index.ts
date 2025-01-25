@@ -40,11 +40,12 @@ app.use(
     origin: [
       "http://localhost:5173",
       "http://localhost:3001",
-      "https://serviceflow-9t5a.vercel.app",
+      "https://serviceflow-9t5a.vercel.app", // Adicione o domínio do seu frontend na Vercel
+      "https://serviceflow-psi.vercel.app", // E do backend também
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "admin-id"],
-    credentials: true,
+    credentials: false,
   })
 );
 
@@ -58,7 +59,6 @@ app.use((req: Request, res: Response, next) => {
 app.use(express.json());
 
 // Adicione um endpoint de teste CORS
-app.options("*", cors()); // habilita pre-flight para todas as rotas
 
 app.get("/api/test-cors", (req: Request, res: Response) => {
   res.json({ message: "CORS está funcionando!" });
@@ -133,10 +133,20 @@ app.get("/api/health", (_req: Request, res: Response) => {
 app.post("/api/auth/login", async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
+    console.log("Login attempt:", { email });
+
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { companyInfo: true },
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        role: true,
+        companyInfo: true,
+      },
     });
+
+    console.log("User found:", { ...user, password: "[HIDDEN]" });
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: "Credenciais inválidas" });
@@ -145,6 +155,7 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
   } catch (error) {
+    console.error("Login error:", error);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -379,23 +390,31 @@ app.post("/api/products", async (req: Request, res: Response) => {
 
 app.get("/api/products", async (_req: Request, res: Response) => {
   try {
-    // Check database connection before querying
-    await checkDatabaseConnection();
+    // Log início da requisição
+    console.log("Getting products - checking database connection...");
+
+    // Verifica conexão com o banco
+    await prisma.$connect();
+    console.log("Database connection OK, fetching products...");
 
     const products = await prisma.product.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: "desc" },
     });
 
+    console.log(`Found ${products.length} products`);
     res.json(products);
   } catch (error: any) {
-    console.error("Error fetching products:", error);
+    console.error("Database error in /api/products:", {
+      code: error.code,
+      message: error.message,
+      meta: error.meta,
+    });
 
-    if (error.code === "P1017") {
-      return res.status(503).json({
-        error: "Database connection error. Please try again later.",
-        code: error.code,
+    // Erro específico para problema de conexão com banco
+    if (error.code === "P1001" || error.code === "P1017") {
+      return res.status(500).json({
+        error: "Database connection error",
+        details: "Could not connect to the database",
       });
     }
 
@@ -616,12 +635,40 @@ app.get("/api/users", async (req: Request, res: Response) => {
   try {
     const adminId = req.headers["admin-id"];
 
-    const admin = await prisma.user.findUnique({
-      where: { id: String(adminId) },
+    console.log("Requisição /users:", {
+      adminId,
+      headers: req.headers,
+      method: req.method,
     });
 
-    if (!admin || admin.role !== "ADMIN") {
-      return res.status(403).json({ error: "Only admins can list users" });
+    if (!adminId) {
+      return res.status(403).json({
+        error: "Admin ID não fornecido",
+        details: "O header admin-id é obrigatório",
+      });
+    }
+
+    // Busca o usuário e inclui logs detalhados
+    const admin = await prisma.user.findUnique({
+      where: { id: String(adminId) },
+      select: { id: true, email: true, role: true },
+    });
+
+    console.log("Usuário encontrado:", admin);
+
+    if (!admin) {
+      return res.status(403).json({
+        error: "Usuário não encontrado",
+        adminId,
+      });
+    }
+
+    // Verifica o role
+    if (admin.role !== "ADMIN") {
+      return res.status(403).json({
+        error: "Only admins can list users",
+        currentRole: admin.role,
+      });
     }
 
     const users = await prisma.user.findMany({
@@ -630,13 +677,16 @@ app.get("/api/users", async (req: Request, res: Response) => {
         email: true,
         role: true,
         createdAt: true,
-        companyInfo: true,
       },
     });
 
-    res.json(users);
+    return res.json(users);
   } catch (error) {
-    res.status(500).json({ error: "Error fetching users" });
+    console.error("Erro em /users:", error);
+    return res.status(500).json({
+      error: "Erro ao buscar usuários",
+      details: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 

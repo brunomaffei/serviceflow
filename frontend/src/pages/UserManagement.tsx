@@ -13,29 +13,66 @@ interface User {
   createdAt: string;
 }
 
+interface NewUser {
+  email: string;
+  password: string;
+  role: string;
+}
+
 export function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [newUser, setNewUser] = useState({
+  const [error, setError] = useState<string | null>(null);
+  const [newUser, setNewUser] = useState<NewUser>({
     email: "",
     password: "",
     role: "USER",
   });
-  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
 
   useEffect(() => {
+    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+
+    if (!currentUser || !currentUser.id) {
+      setError("Usuário não encontrado");
+      return;
+    }
+
+    if (currentUser.role !== "ADMIN") {
+      setError("Apenas administradores podem acessar esta página");
+      return;
+    }
+
     fetchUsers();
   }, []);
 
   const fetchUsers = async () => {
     setLoading(true);
+    setError(null);
     try {
+      const currentUser = JSON.parse(
+        localStorage.getItem("currentUser") || "{}"
+      );
+      console.log("Fetching users with admin:", currentUser);
+
+      if (!currentUser.id || !currentUser.role) {
+        setError("Usuário não autenticado");
+        return;
+      }
+
+      if (currentUser.role !== "ADMIN") {
+        setError(
+          "Acesso negado: apenas administradores podem acessar esta página"
+        );
+        return;
+      }
+
       const data = await apiClient.getUsers(currentUser.id);
-      setUsers(data);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      toast.error("Erro ao carregar usuários");
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      console.error("Erro ao carregar usuários:", error);
+      setError(error.message || "Erro ao carregar usuários");
+      setUsers([]); // Garante que users seja sempre um array
     } finally {
       setLoading(false);
     }
@@ -44,6 +81,9 @@ export function UserManagement() {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const currentUser = JSON.parse(
+        localStorage.getItem("currentUser") || "{}"
+      );
       await apiClient.createUser(newUser, currentUser.id);
       setIsCreating(false);
       setNewUser({ email: "", password: "", role: "USER" });
@@ -54,6 +94,17 @@ export function UserManagement() {
       toast.error(error.message || "Erro ao criar usuário");
     }
   };
+
+  // Adicionar mensagem de erro na UI
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
+        <div className="text-center text-red-600 dark:text-red-400 mt-8">
+          {error}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-16 md:pb-0">
