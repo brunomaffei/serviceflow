@@ -3,25 +3,9 @@ dotenv.config();
 
 import bcrypt from "bcryptjs";
 import cors from "cors";
-import express, {
-  Request as ExpressRequest,
-  Response as ExpressResponse,
-  NextFunction,
-} from "express";
+import express, { NextFunction, Request, Response } from "express";
 import { prisma } from "./prisma/client";
 import { router } from "./routes";
-
-// Definindo tipos específicos para Request e Response
-type Request = ExpressRequest & {
-  body: any;
-  query: any;
-  params: any;
-};
-
-type Response = ExpressResponse & {
-  json: any;
-  status: any;
-};
 
 const app = express();
 
