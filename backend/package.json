@@ -6,6 +6,7 @@
   "engines": {
     "node": ">=18.0.0"
   },
+  "main": "dist/index.js",
   "scripts": {
     "start": "node dist/index.js",
     "build": "prisma generate && tsc",
