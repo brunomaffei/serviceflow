@@ -137,15 +137,28 @@ app.get("/api/health", (_req: Request, res: Response) => {
 app.post("/api/auth/login", async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
-    console.log("Login attempt for:", email);
+    console.log("=== LOGIN ATTEMPT ===");
+    console.log("Environment:", process.env.NODE_ENV);
+    console.log(
+      "Database URL:",
+      process.env.DATABASE_URL?.slice(0, 20) + "..."
+    );
+    console.log("Email:", email);
 
-    // Check database connection first
+    // Test database connection
     try {
       await prisma.$connect();
-      console.log("Database connected successfully");
+      console.log("✅ Database connected");
+
+      // Test query
+      const userCount = await prisma.user.count();
+      console.log("Total users in DB:", userCount);
     } catch (dbError) {
-      console.error("Database connection error:", dbError);
-      return res.status(500).json({ error: "Database connection failed" });
+      console.error("❌ Database connection failed:", dbError);
+      return res.status(500).json({
+        error: "Database connection failed",
+        details: dbError instanceof Error ? dbError.message : String(dbError),
+      });
     }
 
     const user = await prisma.user.findUnique({
@@ -154,26 +167,41 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
         id: true,
         email: true,
         password: true,
-        role: true,
         companyInfo: true,
+        // Remove role field if it's not in schema
       },
     });
 
-    console.log("User search result:", user ? "Found" : "Not found");
+    console.log("User found:", user ? "Yes" : "No");
 
     if (!user) {
       return res.status(401).json({ error: "User not found" });
     }
 
     const isValidPassword = await bcrypt.compare(password, user.password);
+    console.log("Password valid:", isValidPassword);
+
     if (!isValidPassword) {
       return res.status(401).json({ error: "Invalid password" });
     }
 
     const { password: _, ...userWithoutPassword } = user;
+    console.log("Login successful for:", email);
     return res.json(userWithoutPassword);
   } catch (error) {
-    console.error("Detailed login error:", error);
+    console.error("=== LOGIN ERROR ===");
+    console.error(
+      "Type:",
+      error instanceof Error ? error.constructor.name : typeof error
+    );
+    console.error(
+      "Message:",
+      error instanceof Error ? error.message : String(error)
+    );
+    console.error(
+      "Stack:",
+      error instanceof Error ? error.stack : "No stack trace"
+    );
     return res.status(500).json({
       error: "Internal server error",
       details: error instanceof Error ? error.message : String(error),
