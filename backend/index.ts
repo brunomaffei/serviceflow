@@ -8,6 +8,7 @@ import express, {
   Response as ExpressResponse,
 } from "express";
 import { prisma } from "./prisma/client";
+import { router } from "./routes";
 
 // Definindo tipos específicos para Request e Response
 type Request = ExpressRequest & {
@@ -31,8 +32,8 @@ const allowedOrigins = isProduction
   ? [
       process.env.FRONTEND_URL,
       "https://serviceflow-*.vercel.app",
+      "https://serviceflow-swart.vercel.app", // Notice: removed trailing slash
       "https://serviceflow-r5m9.vercel.app",
-      "https://serviceflow-psi.vercel.app",
     ]
   : ["http://localhost:5173", "http://localhost:3001"];
 
@@ -94,6 +95,7 @@ app.use((req: Request, res: Response, next) => {
 });
 
 app.use(express.json());
+app.use("/api", router);
 
 // Adicione um endpoint de teste CORS
 
@@ -635,19 +637,70 @@ app.post("/api/clients", async (req: Request, res: Response) => {
 app.get("/api/clients", async (req: Request, res: Response) => {
   try {
     const { userId } = req.query;
+    console.log("Fetching clients for userId:", userId);
 
-    if (!userId) {
-      return res.status(400).json({ error: "UserId is required" });
+    if (!userId || typeof userId !== "string") {
+      return res.status(400).json({
+        error: "Invalid userId",
+        details: "userId must be a non-empty string",
+        received: userId,
+      });
     }
 
+    // Verify user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        error: "User not found",
+        details: "No user exists with the provided userId",
+        userId,
+      });
+    }
+
+    // Fetch clients
     const clients = await prisma.client.findMany({
       where: { userId: String(userId) },
       orderBy: { createdAt: "desc" },
     });
-    res.json(clients);
+
+    console.log(`Found ${clients.length} clients for user ${userId}`);
+    return res.json(clients || []);
   } catch (error) {
-    console.error("Error fetching clients:", error);
-    res.status(500).json({ error: "Error fetching clients" });
+    console.error("Detailed error in /api/clients:", {
+      error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : "No stack trace",
+      userId: req.query.userId,
+    });
+
+    return res.status(500).json({
+      error: "Database operation failed",
+      details:
+        error instanceof Error ? error.message : "Unknown error occurred",
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+// Add a database health check endpoint
+app.get("/api/db-health", async (_req: Request, res: Response) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Database health check failed:", error);
+    res.status(500).json({
+      status: "unhealthy",
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString(),
+    });
   }
 });
 
@@ -863,3 +916,5 @@ const startServer = async () => {
 };
 
 startServer();
+
+export default app;

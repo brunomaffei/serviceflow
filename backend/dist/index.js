@@ -20,32 +20,51 @@ const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const cors_1 = __importDefault(require("cors"));
 const express_1 = __importDefault(require("express"));
 const client_1 = require("./prisma/client");
+const routes_1 = require("./routes");
 const app = (0, express_1.default)();
-// Add this near the top of the file after imports
-const checkDatabaseConnection = async () => {
-    try {
-        await client_1.prisma.$connect();
-        console.log("✅ Database connection successful");
-    }
-    catch (error) {
-        console.error("❌ Database connection failed:", error);
-        throw error;
-    }
-};
 // Add this after your imports
 const isProduction = process.env.NODE_ENV === "production";
 console.log(`Running in ${isProduction ? "production" : "development"} mode`);
-// Configuração do CORS atualizada
+const allowedOrigins = isProduction
+    ? [
+        process.env.FRONTEND_URL,
+        "https://serviceflow-*.vercel.app",
+        "https://serviceflow-swart.vercel.app", // Notice: removed trailing slash
+        "https://serviceflow-r5m9.vercel.app",
+    ]
+    : ["http://localhost:5173", "http://localhost:3001"];
 app.use((0, cors_1.default)({
-    origin: isProduction
-        ? [
-            "https://serviceflow-9t5a.vercel.app",
-            "https://serviceflow-*.vercel.app",
-        ]
-        : ["http://localhost:5173", "http://localhost:3001"],
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin || origin === "null") {
+            return callback(null, true);
+        }
+        // Allow localhost in development
+        if (!isProduction && origin.startsWith("http://localhost")) {
+            return callback(null, true);
+        }
+        const isAllowed = allowedOrigins.some((allowed) => {
+            if (!allowed)
+                return false;
+            if (allowed === "*")
+                return true;
+            if (typeof allowed === "string" && allowed.includes("*")) {
+                const pattern = new RegExp(allowed.replace("*", ".*"));
+                return pattern.test(origin);
+            }
+            return allowed === origin;
+        });
+        if (isAllowed) {
+            callback(null, true);
+        }
+        else {
+            console.log(`Origin ${origin} not allowed by CORS`);
+            callback(null, true); // Temporarily allow all origins for debugging
+        }
+    },
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "admin-id"],
-    credentials: false,
 }));
 // Add this middleware after your CORS configuration
 app.use(async (req, res, next) => {
@@ -68,6 +87,7 @@ app.use((req, res, next) => {
     next();
 });
 app.use(express_1.default.json());
+app.use("/api", routes_1.router);
 // Adicione um endpoint de teste CORS
 app.get("/api/test-cors", (req, res) => {
     res.json({ message: "CORS está funcionando!" });
@@ -133,56 +153,37 @@ app.get("/api/health", (_req, res) => {
 });
 // Auth routes
 app.post("/api/auth/login", async (req, res) => {
-    var _a;
     try {
         const { email, password } = req.body;
         console.log("=== LOGIN ATTEMPT ===");
-        console.log("Environment:", process.env.NODE_ENV);
-        console.log("Database URL:", ((_a = process.env.DATABASE_URL) === null || _a === void 0 ? void 0 : _a.slice(0, 20)) + "...");
         console.log("Email:", email);
-        // Test database connection
-        try {
-            await client_1.prisma.$connect();
-            console.log("✅ Database connected");
-            // Test query
-            const userCount = await client_1.prisma.user.count();
-            console.log("Total users in DB:", userCount);
-        }
-        catch (dbError) {
-            console.error("❌ Database connection failed:", dbError);
-            return res.status(500).json({
-                error: "Database connection failed",
-                details: dbError instanceof Error ? dbError.message : String(dbError),
-            });
-        }
         const user = await client_1.prisma.user.findUnique({
             where: { email },
-            select: {
-                id: true,
-                email: true,
-                password: true,
+            include: {
                 companyInfo: true,
-                // Remove role field if it's not in schema
             },
         });
         console.log("User found:", user ? "Yes" : "No");
         if (!user) {
-            return res.status(401).json({ error: "User not found" });
+            return res.status(401).json({
+                error: "User not found",
+                details: "No user found with this email",
+            });
         }
         const isValidPassword = await bcryptjs_1.default.compare(password, user.password);
         console.log("Password valid:", isValidPassword);
         if (!isValidPassword) {
-            return res.status(401).json({ error: "Invalid password" });
+            return res.status(401).json({
+                error: "Invalid password",
+                details: "The password provided is incorrect",
+            });
         }
         const { password: _ } = user, userWithoutPassword = __rest(user, ["password"]);
         console.log("Login successful for:", email);
         return res.json(userWithoutPassword);
     }
     catch (error) {
-        console.error("=== LOGIN ERROR ===");
-        console.error("Type:", error instanceof Error ? error.constructor.name : typeof error);
-        console.error("Message:", error instanceof Error ? error.message : String(error));
-        console.error("Stack:", error instanceof Error ? error.stack : "No stack trace");
+        console.error("=== LOGIN ERROR ===", error);
         return res.status(500).json({
             error: "Internal server error",
             details: error instanceof Error ? error.message : String(error),
@@ -191,49 +192,90 @@ app.post("/api/auth/login", async (req, res) => {
 });
 const ADMIN_EMAIL = "admin@admin.com.br";
 const ADMIN_PASSWORD = "123";
+// Add this near the top of the file with other constants
+let isInitialized = false;
 // Adicionar rota para criar usuário inicial
 app.post("/api/init", async (_req, res) => {
     try {
-        console.log("Iniciando criação do usuário admin...");
-        const existingAdmin = await client_1.prisma.user.findUnique({
-            where: { email: ADMIN_EMAIL },
-        });
-        if (existingAdmin) {
-            console.log("Admin já existe:", existingAdmin.email);
+        console.log("Starting system initialization...");
+        // Check if already initialized in this session
+        if (isInitialized) {
+            console.log("System already initialized in this session");
             return res.status(200).json({
-                message: "Admin user already exists",
-                email: existingAdmin.email,
+                status: "skipped",
+                message: "System already initialized in this session",
             });
         }
-        console.log("Criando novo usuário admin...");
+        // Check database connection
+        try {
+            console.log("Testing database connection...");
+            await client_1.prisma.$connect();
+            console.log("Database connection successful");
+        }
+        catch (dbError) {
+            console.error("Database connection failed:", dbError);
+            return res.status(500).json({
+                status: "error",
+                message: "Database connection failed",
+                details: dbError instanceof Error ? dbError.message : String(dbError),
+            });
+        }
+        // Check if any user exists
+        console.log("Checking for existing users...");
+        const userCount = await client_1.prisma.user.count();
+        console.log(`Found ${userCount} existing users`);
+        if (userCount > 0) {
+            isInitialized = true;
+            return res.status(200).json({
+                status: "skipped",
+                message: "System already has users",
+                userCount,
+            });
+        }
+        // Create initial admin user
+        console.log("Creating initial admin user...");
         const hashedPassword = await bcryptjs_1.default.hash(ADMIN_PASSWORD, 10);
-        const user = await client_1.prisma.user.create({
-            data: {
-                email: ADMIN_EMAIL,
-                password: hashedPassword,
-                role: "ADMIN", // Corrigir o campo role para ADMIN
-                companyInfo: {
-                    create: {
-                        name: "Mecânica Rocha",
-                        cnpj: "41.008.040/0001-67",
-                        address: "Rua Eliazar Braga o-416 - CENTRO",
-                        phone: "(14) 99650-2602",
-                        email: "mecanicarocha21@gmail.com",
-                    },
+        const adminData = {
+            email: ADMIN_EMAIL,
+            password: hashedPassword,
+            role: "ADMIN",
+            companyInfo: {
+                create: {
+                    name: "Mecânica Rocha",
+                    cnpj: "41.008.040/0001-67",
+                    address: "Rua Eliazar Braga o-416 - CENTRO",
+                    phone: "(14) 99650-2602",
+                    email: "mecanicarocha21@gmail.com",
                 },
             },
+        };
+        console.log("Admin data prepared:", Object.assign(Object.assign({}, adminData), { password: "[HIDDEN]" }));
+        const user = await client_1.prisma.user.create({
+            data: adminData,
             include: {
                 companyInfo: true,
             },
         });
-        console.log("Admin criado com sucesso:", user.email);
+        isInitialized = true;
+        console.log("Admin user created successfully:", user.id);
         const { password: _ } = user, userWithoutPassword = __rest(user, ["password"]);
-        return res.status(201).json(userWithoutPassword);
+        return res.status(201).json({
+            status: "success",
+            message: "System initialized successfully",
+            user: userWithoutPassword,
+        });
     }
     catch (error) {
-        console.error("Erro ao criar usuário admin:", error);
+        console.error("Initialization error:", {
+            error,
+            message: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : "No stack trace",
+        });
+        // Reset initialization flag on error
+        isInitialized = false;
         return res.status(500).json({
-            error: "Error creating initial user",
+            status: "error",
+            message: "Failed to initialize system",
             details: error instanceof Error ? error.message : String(error),
         });
     }
@@ -533,18 +575,64 @@ app.post("/api/clients", async (req, res) => {
 app.get("/api/clients", async (req, res) => {
     try {
         const { userId } = req.query;
-        if (!userId) {
-            return res.status(400).json({ error: "UserId is required" });
+        console.log("Fetching clients for userId:", userId);
+        if (!userId || typeof userId !== "string") {
+            return res.status(400).json({
+                error: "Invalid userId",
+                details: "userId must be a non-empty string",
+                received: userId,
+            });
         }
+        // Verify user exists
+        const user = await client_1.prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true },
+        });
+        if (!user) {
+            return res.status(404).json({
+                error: "User not found",
+                details: "No user exists with the provided userId",
+                userId,
+            });
+        }
+        // Fetch clients
         const clients = await client_1.prisma.client.findMany({
             where: { userId: String(userId) },
             orderBy: { createdAt: "desc" },
         });
-        res.json(clients);
+        console.log(`Found ${clients.length} clients for user ${userId}`);
+        return res.json(clients || []);
     }
     catch (error) {
-        console.error("Error fetching clients:", error);
-        res.status(500).json({ error: "Error fetching clients" });
+        console.error("Detailed error in /api/clients:", {
+            error,
+            message: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : "No stack trace",
+            userId: req.query.userId,
+        });
+        return res.status(500).json({
+            error: "Database operation failed",
+            details: error instanceof Error ? error.message : "Unknown error occurred",
+            timestamp: new Date().toISOString(),
+        });
+    }
+});
+// Add a database health check endpoint
+app.get("/api/db-health", async (_req, res) => {
+    try {
+        await client_1.prisma.$queryRaw `SELECT 1`;
+        res.json({
+            status: "healthy",
+            timestamp: new Date().toISOString(),
+        });
+    }
+    catch (error) {
+        console.error("Database health check failed:", error);
+        res.status(500).json({
+            status: "unhealthy",
+            error: error instanceof Error ? error.message : String(error),
+            timestamp: new Date().toISOString(),
+        });
     }
 });
 app.put("/api/clients/:id", async (req, res) => {
@@ -731,8 +819,8 @@ const startServer = async () => {
         });
     }
     catch (error) {
-        console.error("Failed to start server:", error);
-        process.exit(1);
+        console.error("Erro ao iniciar o servidor:", error);
     }
 };
 startServer();
+exports.default = app;
