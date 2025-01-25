@@ -38,11 +38,9 @@ const checkDatabaseConnection = async () => {
 app.use(
   cors({
     origin: [
-      "https://serviceflow-psi.vercel.app", // Removido o /api
       "http://localhost:5173",
       "http://localhost:3001",
-      "https://serviceflow-9coy.vercel.app",
-      "https://serviceflow-frontend.vercel.app",
+      "https://serviceflow-9t5a.vercel.app",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "admin-id"],
