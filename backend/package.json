@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "commonjs",
+  "main": "index.ts",
   "engines": {
     "node": ">=18.0.0"
   },
@@ -13,7 +14,6 @@
     "vercel-build": "prisma generate && tsc",
     "postinstall": "prisma generate"
   },
-  "main": "index.ts",
   "dependencies": {
     "@prisma/client": "^6.2.1",
     "bcryptjs": "^2.4.3",
