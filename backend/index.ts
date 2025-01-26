@@ -18,7 +18,13 @@ const app = express();
 // Configuração do CORS mais específica
 app.use(
   cors({
-    origin: "*",
+    origin: [
+      "https://serviceflow-9t5a.vercel.app",
+      "https://serviceflow-9t5a-g8u5w7udu-bruno-arantes-maffeis-projects.vercel.app",
+      "http://localhost:9001",
+      "http://localhost:5173",
+      "*",
+    ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
@@ -27,7 +33,7 @@ app.use(
 app.use(express.json());
 
 // Rota inicial retornar um html com uma mensagem
-app.get("/", (_req: Request, res: Response) => {
+app.get("/", (req: Request, res: Response) => {
   res.send(`
     <h1>API de ordens de serviço</h1>
     <p>Para acessar a API, utilize o endpoint /api</p>
@@ -35,7 +41,7 @@ app.get("/", (_req: Request, res: Response) => {
 });
 
 // Healthcheck route
-app.get("/api/healthcheck", async (_req: Request, res: Response) => {
+app.get("/api/healthcheck", async (req: Request, res: Response) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
     res.json({
@@ -311,8 +317,71 @@ app.get("/api/clients", async (req: Request, res: Response) => {
   }
 });
 
+// Add this new route
+app.post("/api/clients", async (req: Request, res: Response) => {
+  try {
+    const clientData = req.body;
+    console.log("Received client data in backend:", {
+      ...clientData,
+      userId: clientData.userId,
+    });
+
+    // Validate required fields
+    const requiredFields = ["name", "type", "document", "userId"];
+    const missingFields = requiredFields.filter((field) => !clientData[field]);
+
+    if (missingFields.length > 0) {
+      console.log("Missing fields:", missingFields);
+      return res.status(400).json({
+        error: "Missing required fields",
+        details: `Missing: ${missingFields.join(", ")}`,
+      });
+    }
+
+    const userExists = await prisma.user.findUnique({
+      where: { id: clientData.userId },
+    });
+
+    if (!userExists) {
+      return res.status(404).json({
+        error: "Invalid user",
+        details: `User with ID ${clientData.userId} not found`,
+      });
+    }
+
+    const newClient = await prisma.client.create({
+      data: {
+        name: clientData.name,
+        type: clientData.type,
+        document: clientData.document,
+        email: clientData.email || null,
+        phone: clientData.phone || null,
+        address: clientData.address || null,
+        city: clientData.city || null,
+        state: clientData.state || null,
+        companyName: clientData.companyName || null,
+        tradingName: clientData.tradingName || null,
+        stateRegistration: clientData.stateRegistration || null,
+        userId: clientData.userId,
+      },
+    });
+
+    return res.status(201).json(newClient);
+  } catch (error) {
+    console.error("Detailed error creating client:", {
+      error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    return res.status(500).json({
+      error: "Error creating client",
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
 // Users routes
-app.get("/api/users/list", async (_req: Request, res: Response) => {
+app.get("/api/users/list", async (req: Request, res: Response) => {
   try {
     const users = await prisma.user.findMany({
       select: {
@@ -331,28 +400,72 @@ app.get("/api/users/list", async (_req: Request, res: Response) => {
   }
 });
 
+app.delete("/api/users/:id", async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.id;
+    const adminId = req.headers["admin-id"] as string;
+
+    if (!adminId) {
+      return res.status(401).json({ error: "Admin ID is required" });
+    }
+
+    // Delete related records first
+    await prisma.$transaction(async (prisma) => {
+      // Delete related service items
+      await prisma.serviceItem.deleteMany({
+        where: {
+          order: {
+            userId: userId,
+          },
+        },
+      });
+
+      // Delete service orders
+      await prisma.serviceOrder.deleteMany({
+        where: { userId: userId },
+      });
+
+      // Delete company info
+      await prisma.companyInfo.deleteMany({
+        where: { userId: userId },
+      });
+
+      // Delete clients
+      await prisma.client.deleteMany({
+        where: { userId: userId },
+      });
+
+      // Finally delete the user
+      await prisma.user.delete({
+        where: { id: userId },
+      });
+    });
+
+    return res.status(200).json({ message: "User deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return res.status(500).json({
+      error: "Internal server error",
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
 // Melhor tratamento de erros
-app.use((err: Error, _req: Request, res: Response, _next: any) => {
+app.use((err: Error, req: Request, res: Response) => {
   console.error("Error:", err);
   res.status(500).json({ error: "Erro interno do servidor" });
 });
 
 const PORT = process.env.PORT || 3001;
 
-// Wrap the server startup in an async function to handle any initialization
-const startServer = async () => {
-  try {
-    await prisma.$connect();
-    app.listen(PORT, () => {
-      console.log(`Servidor rodando em http://localhost:${PORT}`);
-      console.log(
-        `Healthcheck disponível em: http://localhost:${PORT}/api/healthcheck`
-      );
-    });
-  } catch (error) {
-    console.error("Failed to start server:", error);
-    process.exit(1);
-  }
-};
+app.listen(PORT, () => {
+  console.log(`Servidor rodando em http://localhost:${PORT}`);
+  console.log(
+    `Healthcheck disponível em: http://localhost:${PORT}/api/healthcheck`
+  );
+});
 
-startServer();
+// Exportar o app para ser usado em testes
+
+export default app;

@@ -14,7 +14,6 @@ const api = axios.create({
 // Add request interceptor for debugging
 api.interceptors.request.use(
   (config) => {
-    console.log(`🚀 Making request to: ${config.baseURL}${config.url}`);
     return config;
   },
   (error) => {
@@ -26,7 +25,6 @@ api.interceptors.request.use(
 // Modify response interceptor
 api.interceptors.response.use(
   (response) => {
-    console.log(`✅ Response from ${response.config.url}:`, response.status);
     return response;
   },
   async (error) => {
@@ -216,8 +214,30 @@ export const apiClient = {
 
   // Client methods
   async createClient(clientData: any) {
-    const { data } = await api.post("/clients", clientData);
-    return data;
+    try {
+      console.log("Creating client with data:", clientData); // Debug log
+      const currentUser = JSON.parse(
+        localStorage.getItem("currentUser") || "{}"
+      );
+      console.log("Current user:", currentUser); // Debug log
+
+      if (!currentUser.id) {
+        throw new Error("User ID not found in localStorage");
+      }
+
+      // Ensure userId is set correctly
+      const dataWithUserId = {
+        ...clientData,
+        userId: currentUser.id,
+      };
+
+      console.log("Sending client data:", dataWithUserId); // Debug log
+      const { data } = await api.post("/clients", dataWithUserId);
+      return data;
+    } catch (error) {
+      console.error("Error in createClient:", error);
+      throw error;
+    }
   },
 
   async updateClient(id: string, clientData: any) {
