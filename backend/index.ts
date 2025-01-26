@@ -26,6 +26,14 @@ app.use(
 
 app.use(express.json());
 
+// Rota inicial retornar um html com uma mensagem
+app.get("/", (_req: Request, res: Response) => {
+  res.send(`
+    <h1>API de ordens de serviço</h1>
+    <p>Para acessar a API, utilize o endpoint /api</p>
+  `);
+});
+
 // Healthcheck route
 app.get("/api/healthcheck", async (_req: Request, res: Response) => {
   try {

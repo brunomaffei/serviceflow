@@ -13,7 +13,7 @@
     "vercel-build": "prisma generate && tsc",
     "postinstall": "prisma generate"
   },
-  "main": "index.js",
+  "main": "index.ts",
   "dependencies": {
     "@prisma/client": "^6.2.1",
     "bcryptjs": "^2.4.3",
