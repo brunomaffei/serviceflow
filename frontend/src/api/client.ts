@@ -256,7 +256,7 @@ export const apiClient = {
         throw new Error("Apenas administradores podem acessar esta função");
       }
 
-      const { data } = await api.get("/users", {
+      const { data } = await api.get("/users/list", {
         headers: {
           "admin-id": adminId,
           "Content-Type": "application/json",
