@@ -8,11 +8,8 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: false, // Change this to false since we're not using cookies
+  withCredentials: false,
 });
-
-// Add debug logging
-console.log("API Base URL:", BASE_URL);
 
 // Add request interceptor for debugging
 api.interceptors.request.use(

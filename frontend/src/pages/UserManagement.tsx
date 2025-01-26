@@ -1,4 +1,4 @@
-import { ArrowLeft, Loader2, Plus } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
@@ -29,6 +29,7 @@ export function UserManagement() {
     password: "",
     role: "USER",
   });
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   useEffect(() => {
     const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
@@ -92,6 +93,21 @@ export function UserManagement() {
     } catch (error: any) {
       console.error("Error creating user:", error);
       toast.error(error.message || "Erro ao criar usuário");
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      const currentUser = JSON.parse(
+        localStorage.getItem("currentUser") || "{}"
+      );
+      await apiClient.deleteUser(userId, currentUser.id);
+      setUserToDelete(null);
+      fetchUsers();
+      toast.success("Usuário removido com sucesso!");
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast.error(error.message || "Erro ao remover usuário");
     }
   };
 
@@ -227,6 +243,9 @@ export function UserManagement() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Data de Criação
                         </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Ações
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -246,6 +265,14 @@ export function UserManagement() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
                             {new Date(user.createdAt).toLocaleDateString()}
                           </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={() => setUserToDelete(user)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              <Trash2 className="h-5 w-5" />
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -260,20 +287,28 @@ export function UserManagement() {
                         key={user.id}
                         className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700"
                       >
-                        <div className="space-y-2">
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {user.email}
+                        <div className="flex justify-between items-start">
+                          <div className="space-y-2">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">
+                              {user.email}
+                            </div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              Função:{" "}
+                              {user.role === "ADMIN"
+                                ? "Administrador"
+                                : "Usuário"}
+                            </div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              Criado em:{" "}
+                              {new Date(user.createdAt).toLocaleDateString()}
+                            </div>
                           </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            Função:{" "}
-                            {user.role === "ADMIN"
-                              ? "Administrador"
-                              : "Usuário"}
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            Criado em:{" "}
-                            {new Date(user.createdAt).toLocaleDateString()}
-                          </div>
+                          <button
+                            onClick={() => setUserToDelete(user)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -299,6 +334,34 @@ export function UserManagement() {
           )}
         </div>
       </div>
+
+      {/* Add the delete confirmation modal */}
+      {userToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-sm w-full">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              Confirmar exclusão
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-6">
+              Tem certeza que deseja excluir o usuário {userToDelete.email}?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setUserToDelete(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDeleteUser(userToDelete.id)}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700"
+              >
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
