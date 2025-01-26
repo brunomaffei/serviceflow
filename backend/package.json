@@ -7,13 +7,13 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "start": "node dist/index.js",
+    "start": "node index.js",
     "build": "tsc",
     "dev": "ts-node --files index.ts",
-    "vercel-build": "prisma generate && tsc && cp prisma/schema.prisma dist/",
+    "vercel-build": "prisma generate && tsc",
     "postinstall": "prisma generate"
   },
-  "main": "dist/index.js",
+  "main": "index.js",
   "dependencies": {
     "@prisma/client": "^6.2.1",
     "bcryptjs": "^2.4.3",
