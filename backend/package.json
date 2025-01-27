@@ -6,11 +6,12 @@
   "engines": {
     "node": ">=18.0.0"
   },
+  "main": "index.ts",
   "scripts": {
-    "start": "node api/index.ts",
-    "build": "tsc",
-    "dev": "ts-node --files index.ts",
-    "vercel-build": "prisma generate && prisma migrate deploy && pnpm run build"
+    "start": "nodemon index.ts",
+    "build": "rimraf dist && tsc",
+    "dev": "ts-node-dev --respawn --transpile-only api/index.ts",
+    "vercel-build": "prisma generate && prisma migrate deploy"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",

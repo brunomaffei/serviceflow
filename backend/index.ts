@@ -21,7 +21,7 @@ app.use(
     origin: [
       "https://serviceflow-9t5a.vercel.app",
       "https://serviceflow-9t5a-g8u5w7udu-bruno-arantes-maffeis-projects.vercel.app",
-      "http://localhost:9001",
+      "http://localhost:3001",
       "http://localhost:5173",
       "*",
     ],
@@ -33,7 +33,7 @@ app.use(
 app.use(express.json());
 
 // Rota inicial retornar um html com uma mensagem
-app.get("/", (req: Request, res: Response) => {
+app.get("/", (_req: Request, res: Response) => {
   res.send(`
     <h1>API de ordens de serviço</h1>
     <p>Para acessar a API, utilize o endpoint /api</p>
@@ -41,7 +41,7 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 // Healthcheck route
-app.get("/api/healthcheck", async (req: Request, res: Response) => {
+app.get("/api/healthcheck", async (_req: Request, res: Response) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
     res.json({
@@ -77,10 +77,10 @@ app.get("/api/company-info/:userId", async (req: Request, res: Response) => {
     }
 
     console.log("Found company info:", user.companyInfo);
-    res.json({ companyInfo: user.companyInfo });
+    return res.json({ companyInfo: user.companyInfo });
   } catch (error) {
     console.error("Error fetching company info:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -120,9 +120,9 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
     }
 
     const { password: _, ...userWithoutPassword } = user;
-    res.json(userWithoutPassword);
+    return res.json(userWithoutPassword);
   } catch (error) {
-    res.status(500).json({ error: "Erro interno do servidor" });
+    return res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
 
@@ -169,7 +169,6 @@ app.post("/api/init", async (_req: Request, res: Response) => {
 app.post("/api/service-orders", async (req: Request, res: Response) => {
   try {
     const { items, ...orderData } = req.body;
-    console.log("Received order data:", { ...orderData, items }); // Debug log
 
     // Ensure date is a valid DateTime
     const date = new Date(orderData.date);
@@ -205,11 +204,10 @@ app.post("/api/service-orders", async (req: Request, res: Response) => {
       },
     });
 
-    console.log("Created order:", order); // Debug log
-    res.json(order);
+    return res.json(order);
   } catch (error) {
     console.error("Erro detalhado ao criar ordem de serviço:", error);
-    res.status(500).json({
+    return res.status(500).json({
       error: "Erro ao criar ordem de serviço",
       details: error instanceof Error ? error.message : String(error),
     });
@@ -221,7 +219,7 @@ app.get("/api/service-orders", async (req: Request, res: Response) => {
     const { userId } = req.query;
 
     if (!userId) {
-      return res.json([]); // Retorna array vazio se não houver userId
+      return res.json([]);
     }
 
     const orders = await prisma.serviceOrder.findMany({
@@ -237,10 +235,10 @@ app.get("/api/service-orders", async (req: Request, res: Response) => {
       orderBy: { createdAt: "desc" },
     });
 
-    res.json(orders || []); // Garante que sempre retorna um array
+    return res.json(orders || []);
   } catch (error) {
     console.error("Error fetching orders:", error);
-    res.status(500).json({ error: "Erro ao buscar ordens de serviço" });
+    return res.status(500).json({ error: "Erro ao buscar ordens de serviço" });
   }
 });
 
@@ -438,7 +436,7 @@ app.delete("/api/clients/:id", async (req: Request, res: Response) => {
 });
 
 // Users routes
-app.get("/api/users/list", async (req: Request, res: Response) => {
+app.get("/api/users/list", async (_req: Request, res: Response) => {
   try {
     const users = await prisma.user.findMany({
       select: {
@@ -467,7 +465,7 @@ app.delete("/api/users/:id", async (req: Request, res: Response) => {
     }
 
     // Delete related records first
-    await prisma.$transaction(async (prisma) => {
+    await prisma.$transaction(async (prisma: any) => {
       // Delete related service items
       await prisma.serviceItem.deleteMany({
         where: {
@@ -509,7 +507,7 @@ app.delete("/api/users/:id", async (req: Request, res: Response) => {
 });
 
 // Melhor tratamento de erros
-app.use((err: Error, req: Request, res: Response) => {
+app.use((err: Error, _req: Request, res: Response) => {
   console.error("Error:", err);
   res.status(500).json({ error: "Erro interno do servidor" });
 });
@@ -522,7 +520,5 @@ app.listen(PORT, () => {
     `Healthcheck disponível em: http://localhost:${PORT}/api/healthcheck`
   );
 });
-
-// Exportar o app para ser usado em testes
 
 export default app;
