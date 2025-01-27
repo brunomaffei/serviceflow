@@ -69,4 +69,5 @@ export interface Client {
   stateRegistration?: string | null;
   createdAt: string;
   userId: string;
+  cep: string;
 }

@@ -1,8 +1,20 @@
 import { Building2, User2 } from "lucide-react";
-import { useState } from "react";
+import { forwardRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import InputMask from "react-input-mask";
+import { toast } from "react-toastify";
 import { Client } from "../types/interfaces";
 ("../types/ServiceOrder");
+
+interface ViaCepResponse {
+  cep: string;
+  logradouro: string;
+  complemento: string;
+  bairro: string;
+  localidade: string;
+  uf: string;
+  erro?: boolean;
+}
 
 interface ClientFormProps {
   client?: Client;
@@ -10,13 +22,119 @@ interface ClientFormProps {
   onCancel: () => void;
 }
 
+interface MaskedInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  mask: string;
+}
+
+// Função para validar CPF
+const isValidCPF = (cpf: string) => {
+  const numericCPF = cpf.replace(/\D/g, "");
+
+  if (numericCPF.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(numericCPF)) return false;
+
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    sum += parseInt(numericCPF[i]) * (10 - i);
+  }
+  let digit = 11 - (sum % 11);
+  if (digit >= 10) digit = 0;
+  if (digit !== parseInt(numericCPF[9])) return false;
+
+  sum = 0;
+  for (let i = 0; i < 10; i++) {
+    sum += parseInt(numericCPF[i]) * (11 - i);
+  }
+  digit = 11 - (sum % 11);
+  if (digit >= 10) digit = 0;
+  if (digit !== parseInt(numericCPF[10])) return false;
+
+  return true;
+};
+
+// Função para validar CNPJ
+const isValidCNPJ = (cnpj: string) => {
+  const numericCNPJ = cnpj.replace(/\D/g, "");
+
+  if (numericCNPJ.length !== 14) return false;
+  if (/^(\d)\1{13}$/.test(numericCNPJ)) return false;
+
+  let size = numericCNPJ.length - 2;
+  let numbers = numericCNPJ.substring(0, size);
+  const digits = numericCNPJ.substring(size);
+  let sum = 0;
+  let pos = size - 7;
+
+  for (let i = size; i >= 1; i--) {
+    sum += parseInt(numbers.charAt(size - i)) * pos--;
+    if (pos < 2) pos = 9;
+  }
+
+  let result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+  if (result !== parseInt(digits.charAt(0))) return false;
+
+  size = size + 1;
+  numbers = numericCNPJ.substring(0, size);
+  sum = 0;
+  pos = size - 7;
+
+  for (let i = size; i >= 1; i--) {
+    sum += parseInt(numbers.charAt(size - i)) * pos--;
+    if (pos < 2) pos = 9;
+  }
+
+  result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+  if (result !== parseInt(digits.charAt(1))) return false;
+
+  return true;
+};
+
+// Atualizar o componente MaskedInput usando react-input-mask
+const MaskedInput = forwardRef<HTMLInputElement, MaskedInputProps>(
+  ({ mask, onChange, onBlur, ...props }, ref) => {
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      const numericValue = value.replace(/\D/g, "");
+
+      // Validações no blur
+      if (mask === "999.999.999-99" && numericValue.length === 11) {
+        if (!isValidCPF(value)) {
+          toast.error("CPF inválido");
+        }
+      } else if (mask === "99.999.999/9999-99" && numericValue.length === 14) {
+        if (!isValidCNPJ(value)) {
+          toast.error("CNPJ inválido");
+        }
+      }
+
+      onBlur?.(e);
+    };
+
+    return (
+      <InputMask mask={mask} onChange={onChange} onBlur={handleBlur} {...props}>
+        {(inputProps: any) => (
+          <input
+            {...inputProps}
+            ref={ref}
+            className="w-full h-12 px-4 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          />
+        )}
+      </InputMask>
+    );
+  }
+);
+
+MaskedInput.displayName = "MaskedInput";
+
 export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
   const [clientType, setClientType] = useState<"PF" | "PJ">(
     client?.type || "PF"
   );
+  const [isLoadingCep, setIsLoadingCep] = useState(false);
   const {
     register,
     handleSubmit,
+    setValue,
     formState: {},
   } = useForm({
     defaultValues: {
@@ -31,6 +149,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
       companyName: client?.companyName || "",
       tradingName: client?.tradingName || "",
       stateRegistration: client?.stateRegistration || "",
+      cep: client?.cep || "",
     },
   });
 
@@ -52,6 +171,31 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
 
     console.log("Submitting client data:", clientData); // Debug log
     onSubmit(clientData);
+  };
+
+  // Função para buscar CEP
+  const handleCepBlur = async (event: React.FocusEvent<HTMLInputElement>) => {
+    const cep = event.target.value.replace(/\D/g, "");
+
+    if (cep.length !== 8) return;
+
+    try {
+      setIsLoadingCep(true);
+      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data: ViaCepResponse = await response.json();
+
+      if (!data.erro) {
+        setValue("address", `${data.logradouro}, ${data.bairro}`);
+        setValue("city", data.localidade);
+        setValue("state", data.uf);
+      } else {
+        toast.error("CEP não encontrado");
+      }
+    } catch (error) {
+      toast.error("Erro ao buscar CEP");
+    } finally {
+      setIsLoadingCep(false);
+    }
   };
 
   return (
@@ -91,114 +235,135 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
         {clientType === "PJ" && (
           <>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Razão Social
               </label>
               <input
                 type="text"
                 {...register("companyName", { required: clientType === "PJ" })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="w-full h-12 px-4 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Nome Fantasia
               </label>
               <input
                 type="text"
                 {...register("tradingName")}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="w-full h-12 px-4 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
           </>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {clientType === "PF" ? "Nome Completo" : "Nome do Responsável"}
           </label>
           <input
             type="text"
             {...register("name", { required: true })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            className="w-full h-12 px-4 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {clientType === "PF" ? "CPF" : "CNPJ"}
           </label>
-          <input
+          <MaskedInput
             type="text"
+            mask={clientType === "PF" ? "999.999.999-99" : "99.999.999/9999-99"}
             {...register("document", { required: true })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           />
         </div>
 
         {clientType === "PJ" && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Inscrição Estadual
             </label>
-            <input
+            <MaskedInput
               type="text"
+              mask="999.999.999.999"
               {...register("stateRegistration")}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
           </div>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Email
           </label>
           <input
             type="email"
             {...register("email", { required: true })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            className="w-full h-12 px-4 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Telefone
           </label>
-          <input
+          <MaskedInput
             type="tel"
+            mask="(99) 99999-9999"
             {...register("phone", { required: true })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           />
         </div>
 
+        {/* Adicionar campo CEP antes do endereço */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            CEP
+          </label>
+          <div className="relative">
+            <MaskedInput
+              type="text"
+              mask="99999-999"
+              {...register("cep")}
+              onBlur={handleCepBlur}
+              className="w-full h-12 px-4 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+            {isLoadingCep && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Endereço
           </label>
           <input
             type="text"
             {...register("address", { required: true })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            className="w-full h-12 px-4 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Cidade
           </label>
           <input
             type="text"
             {...register("city", { required: true })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            className="w-full h-12 px-4 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Estado
           </label>
           <select
             {...register("state", { required: true })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            className="w-full h-12 px-4 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
             <option value="">Selecione...</option>
             <option value="AC">Acre</option>

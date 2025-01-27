@@ -302,6 +302,35 @@ app.get("/api/products", async (_req: Request, res: Response) => {
   }
 });
 
+// Add new DELETE endpoint for products
+app.delete("/api/products/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // First check if the product exists
+    const product = await prisma.product.findUnique({
+      where: { id },
+    });
+
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    // Delete the product
+    await prisma.product.delete({
+      where: { id },
+    });
+
+    return res.status(200).json({ message: "Product deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting product:", error);
+    return res.status(500).json({
+      error: "Error deleting product",
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
 // Clients routes
 app.get("/api/clients", async (req: Request, res: Response) => {
   try {
@@ -375,6 +404,34 @@ app.post("/api/clients", async (req: Request, res: Response) => {
     });
     return res.status(500).json({
       error: "Error creating client",
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+app.delete("/api/clients/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // First check if the client exists
+    const client = await prisma.client.findUnique({
+      where: { id },
+    });
+
+    if (!client) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    // Delete the client
+    await prisma.client.delete({
+      where: { id },
+    });
+
+    return res.status(200).json({ message: "Client deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting client:", error);
+    return res.status(500).json({
+      error: "Error deleting client",
       details: error instanceof Error ? error.message : String(error),
     });
   }
