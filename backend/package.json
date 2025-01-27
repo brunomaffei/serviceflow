@@ -11,7 +11,9 @@
     "start": "nodemon index.ts",
     "build": "rimraf dist && tsc",
     "dev": "ts-node-dev --respawn --transpile-only api/index.ts",
-    "vercel-build": "prisma generate && prisma migrate deploy"
+    "vercel-build": "prisma generate && prisma migrate deploy",
+    "add-build": "git add dist",
+    "ts-check": "tsc --project tsconfig.json"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",
@@ -32,6 +34,11 @@
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.7.3"
   },
+  "pre-commit": [
+    "ts.check",
+    "build",
+    "add-build"
+  ],
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
   },
