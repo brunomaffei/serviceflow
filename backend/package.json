@@ -3,23 +3,21 @@
   "version": "1.0.0",
   "private": true,
   "type": "commonjs",
-  "main": "index.ts",
   "engines": {
     "node": ">=18.0.0"
   },
   "scripts": {
-    "start": "node index.js",
+    "start": "node api/index.ts",
     "build": "tsc",
     "dev": "ts-node --files index.ts",
-    "vercel-build": "prisma generate && tsc",
-    "postinstall": "prisma generate"
+    "vercel-build": "prisma generate && prisma migrate deploy && pnpm run build"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
+    "express": "^4.18.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
